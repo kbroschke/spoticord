@@ -4,7 +4,8 @@
 
 ## Installation
 
-TBD
+__TBD__
+but here's a rough outline:
 - node
 - librespot
 - download bot
