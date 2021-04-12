@@ -102,3 +102,14 @@ dist
 
 # TernJS port file
 .tern-port
+
+
+--- template end ---
+# ESLint config
+.eslintrc.json
+
+# config file with bot tokens
+config.json
+
+# prefix settings
+prefixes.json
