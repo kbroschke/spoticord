@@ -6,11 +6,12 @@
 
 __TBD__
 but here's a rough outline:
-- node
-- librespot
-- download bot
+- install node (v14)
+- install librespot
+- download this bot
 - create run-script with Spotify credentials for librespot
 - create config-file with Discord's and Spotify's API tokens
+- start with ```node .```
 
 ## Disclaimer
 
