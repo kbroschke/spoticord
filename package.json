@@ -7,8 +7,6 @@
     "@discordjs/opus": "^0.5.0",
     "bufferutil": "^4.0.3",
     "discord.js": "^12.5.3",
-    "eslint": "^7.24.0",
-    "naudiodon": "^2.3.4",
     "sodium": "^3.0.2",
     "spotify-web-api-node": "^5.0.2",
     "utf-8-validate": "^5.0.4",
