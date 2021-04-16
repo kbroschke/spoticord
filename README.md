@@ -13,6 +13,7 @@ but here's a rough outline:
 - install node (v14)
   - I recommend using nvm 
 - install librespot
+  - download a precompiled version or
   - clone [their repo](https://github.com/librespot-org/librespot)
   - build with ```cargo build --release --no-default-features```
 - download this bot
@@ -22,7 +23,6 @@ but here's a rough outline:
 - create run-script with Spotify credentials for librespot (TODO: create template)
 - create config-file with Discord's and Spotify's API tokens (TODO: create template)
 - start bot with ```node .```
-  - If your bot is running on an remote server I recommend using screen to run the bot in an detached seesion
 
 ## Usage
 
