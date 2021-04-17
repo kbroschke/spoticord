@@ -4,6 +4,7 @@ console.log('Loading libraries...');
 const Discord = require('discord.js');
 const fs = require('fs');
 const SpotifyWebApi = require('spotify-web-api-node');
+const { spawn } = require('child_process');
 const https = require('https');
 const querystring = require('querystring');
 
@@ -37,48 +38,189 @@ function refreshSpotifyToken(refreshToken, clientID, clientSecret, next) {
 	req.end();
 }
 
-// load all the tokens from config.json
-let config = '';
-try {
-	console.log('Loading config...');
-	config = require('./config.json');
-	console.log('Config loaded successfully!');
+// create instances for Discord and Spotify APIs globally
+const client = new Discord.Client();
+let spotifyAPI;
+
+// create config dir if not exists
+if (!fs.existsSync('./config')) {
+	fs.mkdirSync('./config');
 }
-catch(err) {
-	console.error('Error loading config. Generating default template...');
+
+// load discord config
+let discord_config;
+try {
+	console.log('Loading discord config...');
+	discord_config = require('./config/discord.json');
+	if (discord_config.BOT_ID && discord_config.BOT_TOKEN) {
+		if (!discord_config.DISCORD_USER_ID_OF_SPOTIFY_ACCOUNT_OWNER) {
+			discord_config.LOCKED = false;
+		}
+		console.log('Discord config loaded successfully!');
+	}
+	else {
+		console.log('Can\'t load config file! BOT_ID or BOT_TOKEN is empty.');
+		process.exit();
+	}
+}
+catch(error) {
+	console.error('Error loading discord config.\nGenerating default template...');
 	const default_config = {
+		'BOT_ID': '',
 		'BOT_TOKEN': '',
-		'SPOTIY_REFRESH_TOKEN': '',
-		'SPOTIFY_CLIENT_ID': '',
-		'SPOTIFY_CLIENT_SECRET': '',
-		'SPOTIFYD_BOT_ID': '',
+		'DISCORD_USER_ID_OF_SPOTIFY_ACCOUNT_OWNER': '',
 		'LOCKED': false,
 	};
-	console.error('Here\'s an template for the config file:');
-	console.error(JSON.stringify(default_config, null, 4));
+	fs.writeFileSync('./config/discord.json', JSON.stringify(default_config, null, 4));
+	console.log(
+		'The template was saved to ./config/discord.json\n' +
+		'Please fill it with your information. Only the bot\'s ID and token are required for the bot to work.\n' +
+		'Both can be found at https://discord.com/developers/applications.\n' +
+		'(The BOT_ID under General Information > Application ID)\n' +
+		'(The BOT_TOKEN under Bot > Token)\n' +
+		'The DISCORD_USER_ID_OF_SPOTIFY_ACCOUNT_OWNER can be left as an empty String if the feature for locking the bot is not needed.\n' +
+		'Then start the bot again!',
+	);
+	process.exit();
+}
+
+// load spotify config
+let spotify_config;
+try {
+	console.log('Loading spotify config...');
+	spotify_config = require('./config/spotify.json');
+	if (spotify_config.CLIENT_ID && spotify_config.CLIENT_SECRET && spotify_config.USERNAME && spotify_config.PASSWORD && spotify_config.LIBRESPOT_PATH) {
+		spotifyAPI = new SpotifyWebApi({
+			clientId: spotify_config.CLIENT_ID,
+			clientSecret: spotify_config.CLIENT_SECRET,
+			redirectUri: 'https://example.com/callback',
+		});
+		if (spotify_config.REFRESH_TOKEN) {
+			console.log('Spotify config loaded successfully!');
+		}
+		else if (spotify_config.AUTH_CODE) {
+			spotifyAPI.authorizationCodeGrant(spotify_config.AUTH_CODE).then(
+				function(data) {
+					spotify_config.REFRESH_TOKEN = data.body['refresh_token'];
+					fs.writeFileSync('./config/spotify.json', JSON.stringify(spotify_config, null, 4));
+					console.log('Successfully updated refresh token!');
+					console.log('Please start the bot again. (I promise, this should be the last time)');
+					process.exit();
+				},
+				function(error) {
+					console.error(error);
+					console.log(
+						'Something went wrong while sending the auth code to Spotify.\n' +
+						'Please make sure to paste the whole code you got in the redirect URL.\n' +
+						'If you need a new auth code, just remove the current one from the config file and start the bot again.',
+					);
+					process.exit();
+				},
+			);
+		}
+		else {
+			console.log(
+				'Refresh Token is missing in Config.\n' +
+				'After this text there will be an weblink.\n' +
+				'You need to copy this into a browser and authenticate on the resulting webpage with your Spotify Account.\n' +
+				'You will be redirected to example.com. You need to copy the code after \'code=\' in your browser\'s address bar. (yes, it\'s veeeery long)\n' +
+				'You need to paste this code in the spotify.json file behind \'AUTH_CODE\'.\n' +
+				'Then start the bot again.',
+			);
+			const scopes = [
+				'user-read-email',
+				'user-read-private',
+				'user-read-playback-state',
+				'user-modify-playback-state',
+				'user-read-currently-playing',
+			];
+			console.log(spotifyAPI.createAuthorizeURL(scopes));
+			process.exit();
+		}
+	}
+	else {
+		console.log('Can\'t load config file! A required parameter is missing. Please check the config file at ./config/spotify.json.');
+		process.exit();
+	}
+}
+catch(error) {
+	console.error('Error loading spotify config. Generating default template...');
+	const default_config = {
+		'CLIENT_ID': '',
+		'CLIENT_SECRET': '',
+		'REFRESH_TOKEN': '',
+		'AUTH_CODE': '',
+		'USERNAME': '',
+		'PASSWORD': '',
+		'LIBRESPOT_PATH': '',
+	};
+	fs.writeFileSync('./config/spotify.json', JSON.stringify(default_config, null, 4));
+	console.log(
+		'The template was saved to ./config/spotify.json\n' +
+		'Please read the following instructions carefully.\n\n' +
+		'Please fill it with your information. Please fill in everything except the refresh token and auth code for now.\n' +
+		'Your Client ID & Secret can be found at https://developer.spotify.com/dashboard/applications.\n' +
+		'If you never created an Application through Spotify\'s Dashboard before you should search the internet for a guide on how to do so but it\'s actually not really hard BUT(!)\n' +
+		'you MUST add \'https://example.com/callback\' as an redirect URL in your application!!!\n\n' +
+		'Your username (that\'s not strictly the name you see in Spotify, sometimes it\'s just random characters) can be found at:\n' +
+		'https://www.spotify.com/de/account/overview/\n' +
+		'The password is just passed through to Librespot for Authentication. If you do not trust me (and you shouldn\'t) you can find the code of this bot here:\n' +
+		'https://github.com/kbroschke/spoticord\n' +
+		'If you open index.js you can search for \'PASSWORD\' and see for yourself that I\'m not doing anything funky with your password!\n' +
+		'Please paste the full path to the librespot executable! (e.g. in my case it\'s \'/home/pi/librespot/target/release/librespot\'\n',
+		'Now start the bot again!',
+	);
 	process.exit();
 }
 
 // load the server-specific prefixes
-let prefixes = '';
+let prefixes;
 try {
 	console.log('Loading server specific prefixes...');
-	prefixes = require('./prefixes.json');
+	prefixes = require('./config/prefixes.json');
 	console.log('Prefixes loaded successfully!');
 }
 catch(err) {
-	console.error('Error loading prefixes.');
-	console.error('If you don\'t have any old data to import, you can just create an empty JSON-file (only content: \'{}\')');
-	process.exit();
+	console.error('Error loading prefixes. Creating empty file.');
+	fs.writeFileSync('./config/prefixes.json', '{}');
+	console.error('If you have old data to import, stop the bot now and place your prefixes.json file back in the config directory.');
 }
 
-console.log('Initialization complete. Starting Discord, Spotify and Audio APIs.');
+console.log('Initialization complete. Starting Librespot.');
 
-const client = new Discord.Client();
-const spotifyApi = new SpotifyWebApi();
+// switch for turning librespot stream on and off
+let LIBRESPOT_ACTIVE = false;
 
-const spotifydBotID = config.SPOTIFYD_BOT_ID;
-const spotifyOwnerDiscordID = config.DISCORD_USER_ID_OF_SPOTIFY_ACCOUNT_OWNER;
+// start librespot
+const librespot = spawn(
+	spotify_config.LIBRESPOT_PATH,
+	[
+		'-n', 'Librespot',
+		'--device-type', 'computer',
+		'-b', '320',
+		'-u', spotify_config.USERNAME,
+		'-p', spotify_config.PASSWORD,
+		'--backend', 'pipe',
+	]);
+
+librespot.stderr.pipe(process.stdout);
+
+librespot.stdout.on('data', chunk => {
+	if (!LIBRESPOT_ACTIVE) {
+		return;
+	}
+	else {
+		// TODO pipe or write chunk to discord
+	}
+});
+
+librespot.on('error', error => {
+	console.log(error);
+});
+
+// shorten config names that don't change and are needed often
+const botID = discord_config.BOT_ID;
+const spotifyOwnerDiscordID = discord_config.DISCORD_USER_ID_OF_SPOTIFY_ACCOUNT_OWNER;
 
 let prefix;
 let dispatcher;
@@ -89,7 +231,7 @@ const embedNow = new Discord.MessageEmbed().setColor('#1DB954');
 const embedHelp = new Discord.MessageEmbed().setColor('#1DB954').setTitle('Command list & explanations');
 
 function refreshSpotifyTokenCaller() {
-	refreshSpotifyToken(config.SPOTIY_REFRESH_TOKEN, config.SPOTIFY_CLIENT_ID, config.SPOTIFY_CLIENT_SECRET, res => {
+	refreshSpotifyToken(spotify_config.REFRESH_TOKEN, spotify_config.CLIENT_ID, spotify_config.CLIENT_SECRET, res => {
 		let response = '';
 
 		res.on('data', data => {
@@ -98,9 +240,9 @@ function refreshSpotifyTokenCaller() {
 
 		res.on('end', () => {
 			if (res.statusCode == 200) {
-				spotifyApi.setAccessToken(JSON.parse(response).access_token);
+				spotifyAPI.setAccessToken(JSON.parse(response).access_token);
 				console.log('Successfully updated Spotify Access Token!');
-				spotifyApi.getMe().then(
+				spotifyAPI.getMe().then(
 					function(data) {
 						console.log('Authenticated with Spotify Api as:', data.body.email);
 					},
@@ -146,12 +288,12 @@ client.on('message', async message => {
 
 		// check if bot is locked
 		// this is useful if you're using your personal spotify fot this bot and dont want the bot being able to manipulate your playback 24/7
-		const locked = config.LOCKED;
+		const locked = discord_config.LOCKED;
 
 		// get prefix from json
 		if (message.guild != null) {
 			if (message.guild.id in prefixes) {
-				prefix = prefixes[message.guild.id].prefix;
+				prefix = prefixes[message.guild.id];
 			}
 			else {
 				// default to this prefix
@@ -227,7 +369,7 @@ client.on('message', async message => {
 			}
 
 			if (args.length < 1) {
-				spotifyApi.getMyCurrentPlaybackState().then(
+				spotifyAPI.getMyCurrentPlaybackState().then(
 					function(data) {
 						if (JSON.stringify(data.body) == '{}') {
 							message.channel.send(embedDescriptionOnly.setDescription('Nothing\'s currently playing. You can start playback by providing a track after the `play` command.'));
@@ -273,7 +415,7 @@ client.on('message', async message => {
 				message.channel.send('Sorry, currently I\'m not available for this task.');
 			}
 			else {
-				spotifyApi.pause().then(
+				spotifyAPI.pause().then(
 					function() {
 						message.react('⏸️');
 					},
@@ -293,7 +435,7 @@ client.on('message', async message => {
 				if (message.guild.voice) {
 					message.guild.voice.connection.disconnect();
 				}
-				spotifyApi.pause().then(
+				spotifyAPI.pause().then(
 					function() {
 						message.react('👋');
 					},
@@ -305,7 +447,7 @@ client.on('message', async message => {
 			}
 			break;
 		case 'now':
-			spotifyApi.getMyCurrentPlayingTrack().then(
+			spotifyAPI.getMyCurrentPlayingTrack().then(
 				function(data) {
 					const item = data.body.item;
 					if (item != undefined) {
@@ -375,10 +517,8 @@ client.on('message', async message => {
 			}
 			else {
 				prefix = args.join(' ');
-				prefixes[message.guild.id] = {
-					prefix: prefix,
-				};
-				fs.writeFile('./prefixes.json', JSON.stringify(prefixes, null, 4), error => {
+				prefixes[message.guild.id] = prefix;
+				fs.writeFile('./config/prefixes.json', JSON.stringify(prefixes, null, 4), error => {
 					if (error) {
 						console.error('--- FS WRITE ERROR ---', error);
 						message.channel.send('Sorry! There was an internal error!');
@@ -393,7 +533,7 @@ client.on('message', async message => {
 			}
 			else if (args[0] == 'true' || args[0] == 'on') {
 				console.log('Setting Shuffle mode to true.');
-				setShuffle(true, message);
+				setShuffle(true, message); // TODO fix this vgl. changelog spotify-web-api-node
 			}
 			else if (args[0] == 'false' || args[0] == 'off') {
 				console.log('Setting Shuffle mode to false.');
@@ -415,7 +555,7 @@ client.on('message', async message => {
 			}
 			break;
 		case 'skip':
-			spotifyApi.skipToNext().then(
+			spotifyAPI.skipToNext().then(
 				function() {
 					message.react('👌');
 				},
@@ -426,7 +566,7 @@ client.on('message', async message => {
 			);
 			break;
 		case 'again':
-			spotifyApi.skipToPrevious().then(
+			spotifyAPI.skipToPrevious().then(
 				function() {
 					message.react('👌');
 				},
@@ -484,8 +624,8 @@ client.on('message', async message => {
 		case 'lock':
 			if (message.member.user.id == spotifyOwnerDiscordID) {
 				if (!locked) {
-					config.LOCKED = true;
-					fs.writeFile('./config.json', JSON.stringify(config, null, 4), error => {
+					discord_config.LOCKED = true;
+					fs.writeFile('./config/discord_config.json', JSON.stringify(discord_config, null, 4), error => {
 						if (error) {
 							console.log('--- FS WRITE ERROR ---', error);
 							message.channel.send('Sorry! There was an internal error!');
@@ -503,8 +643,8 @@ client.on('message', async message => {
 		case 'unlock':
 			if (message.member.user.id == spotifyOwnerDiscordID) {
 				if (locked) {
-					config.LOCKED = false;
-					fs.writeFile('./config.json', JSON.stringify(config, null, 4), error => {
+					discord_config.LOCKED = false;
+					fs.writeFile('./config/discord_config.json', JSON.stringify(discord_config, null, 4), error => {
 						if (error) {
 							console.log('--- FS WRITE ERROR ---', error);
 							message.channel.send('Sorry! There was an internal error!');
@@ -541,7 +681,7 @@ client.on('voiceStateUpdate', (oldState, newState) => {
 	else {
 		let channelMembers;
 
-		if (oldState.id == spotifydBotID) {
+		if (oldState.id == botID) {
 			if (newState.channel == null) {
 				return;
 			}
@@ -556,13 +696,13 @@ client.on('voiceStateUpdate', (oldState, newState) => {
 
 		// when user leaves oldState does NOT include this user in channel.members
 		// dont know why but it works now
-		if (channelMembers.size == 1 && channelMembers.has(spotifydBotID)) {
-			channelMembers.get(spotifydBotID).voice.connection.disconnect();
+		if (channelMembers.size == 1 && channelMembers.has(botID)) {
+			channelMembers.get(botID).voice.connection.disconnect();
 		}
 	}
 });
 
-client.login(config.BOT_TOKEN).then(() => {
+client.login(discord_config.BOT_TOKEN).then(() => {
 	console.log('Discord login complete.');
 });
 
@@ -579,8 +719,8 @@ function msToMM_SS(progress_ms) {
 	return [progress_m, progress_s];
 }
 
-function setShuffle(boolean, message) {
-	spotifyApi.setShuffle({ state: boolean }).then(
+function setShuffle(state, message) {
+	spotifyAPI.setShuffle(state).then(
 		function() {
 			message.react('👌');
 		},
@@ -592,7 +732,7 @@ function setShuffle(boolean, message) {
 }
 
 function setRepeat(option, message) {
-	spotifyApi.setRepeat({ state: option }).then(
+	spotifyAPI.setRepeat(option).then(
 		function() {
 			message.react('👌');
 		},
@@ -604,7 +744,7 @@ function setRepeat(option, message) {
 }
 
 function searchSpotify(query, type, message) {
-	spotifyApi.search(query, [type], { limit : 5 }).then(
+	spotifyAPI.search(query, [type], { limit : 5 }).then(
 		function(data) {
 			// TODO
 			const response = data.body;
@@ -633,21 +773,62 @@ function searchSpotify(query, type, message) {
 	);
 }
 
-function play(message, connection) {
-	dispatcher.on('error', error => console.error('Dispatcher error', error));
+function initializePlayback(data, message) {
+	// check if already in channel
+	if (message.guild.voice && message.guild.voice.channel) {
+		if (message.guild.voice.channel == message.member.voice.channel) {
+			initSpotify(data, message, message.guild.voice.connection);
+		}
+		else {
+			message.channel.send(embedDescriptionOnly.setDescription('Please join the bot\'s voice channel first.'));
+		}
+	}
+	else {
+		message.member.voice.channel.join().then(
+			connection => {
+				initSpotify(data, message, connection);
+			},
+		);
+	}
+}
 
-	dispatcher.on('finish', () => {
-		console.log('Strean finished.');
-	});
+function initSpotify(data, message, connection) {
+	if (spotify_config.DEVICE_ID) {
+		playSpotify(data, message, connection);
+	}
+	else {
+		// get Device ID of Librespot in Spotify Connect
+		spotifyAPI.getMyDevices().then(
+			function(device_data) {
+				// check for device with name 'Librespot'
+				if (device_data.body.devices) {
+					for (let index = 0; index < device_data.body.devices.length; index++) {
+						if (device_data.body.devices[index].name == 'Librespot') {
+							spotify_config.DEVICE_ID = device_data.body.devices[index].id;
+							fs.writeFile('./config/spotify.json', JSON.stringify(spotify_config, null, 4), error => {
+								if (error) {
+									console.error('Failed writing Spotify Device ID. I\'ll try again next time.');
+									console.error(error);
+								}
+							});
+							playSpotify(data, message, connection);
+						}
+					}
+				}
+			},
+			function(error) {
+				console.error('--- ERROR WHILE GETTING DEVICES ---\n', error);
+				message.channel.send(embedDescriptionOnly.setDescription('Playback could not be started. Please try again later.'));
+			},
+		);
+	}
 }
 
 function playSpotify(data, message, connection) {
-	if (data.body.device.id != '3c2f908d41b70e1d5b562ff6c7d9823d6c86e394') {
-		spotifyApi.transferMyPlayback(
-			{
-				deviceIds:['3c2f908d41b70e1d5b562ff6c7d9823d6c86e394'],
-				play: true,
-			},
+	if (data.body.device.id != spotify_config.DEVICE_ID) {
+		spotifyAPI.transferMyPlayback(
+			[spotify_config.DEVICE_ID],
+			{ play: true },
 		).then(
 			function() {
 				play(message, connection);
@@ -660,36 +841,31 @@ function playSpotify(data, message, connection) {
 		);
 	}
 	else {
-		spotifyApi.play().then(
+		spotifyAPI.play().then(
 			function() {
 				play(message, connection);
 				message.react('▶️');
 			},
 			function(error) {
-				console.error('Playback error', error);
+				console.error('Playback error\n', error);
 				message.channel.send(embedDescriptionOnly.setDescription('Playback could not be started. Please try again later.'));
 			},
 		);
 	}
 }
 
-function initializePlayback(data, message) {
-	if (message.guild.voice && message.guild.voice.channel) {
-		if (message.guild.voice.channel == message.member.voice.channel) {
-			playSpotify(data, message, message.guild.voice.connection);
-		}
-		else {
-			message.channel.send(embedDescriptionOnly.setDescription('Please join the bot\'s voice channel first.'));
-		}
-	}
-	else {
-		message.member.voice.channel.join().then(
-			connection => {
-				playSpotify(data, message, connection);
-			},
-		);
-	}
+function play(message, connection) {
+	LIBRESPOT_ACTIVE = true;
+
+	dispatcher.on('error', error => {
+		console.error('Dispatcher error', error);
+	});
+
+	dispatcher.on('finish', () => {
+		console.log('Strean finished.');
+	});
 }
+
 
 /*
 function buildList(array) {
@@ -720,3 +896,9 @@ function buildList(array) {
 	return 'string';
 }
 */
+
+process.on('SIGINT', () => {
+	console.log('Caught interrupt signal');
+	// TODO disconnect all voice connections, stop librespot gracefully
+	process.exit();
+});
