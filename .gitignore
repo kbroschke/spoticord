@@ -105,11 +105,9 @@ dist
 
 
 --- template end ---
+
 # ESLint config
 .eslintrc.json
 
-# config file with bot tokens
-config.json
-
-# prefix settings
-prefixes.json
+# config files with bot tokens
+config/
