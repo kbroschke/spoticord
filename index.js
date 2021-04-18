@@ -188,9 +188,6 @@ catch(err) {
 
 console.log('Initialization complete. Starting Librespot.');
 
-// switch for turning librespot stream on and off
-let LIBRESPOT_ACTIVE = false;
-
 // start librespot
 const librespot = spawn(
 	spotify_config.LIBRESPOT_PATH,
@@ -200,11 +197,15 @@ const librespot = spawn(
 		'-b', '320',
 		'-u', spotify_config.USERNAME,
 		'-p', spotify_config.PASSWORD,
-		'--backend', 'pipe', '-v'
+		'--backend', 'pipe',
+		'--initial-volume', 80,
+		// '--passthrough', // TODO: raw ogg into ogg/opus for discord?
+		'-v',
 	]);
 
 librespot.stderr.pipe(process.stdout);
 
+/*
 librespot.stdout.on('data', chunk => {
 	if (!LIBRESPOT_ACTIVE) {
 		return;
@@ -213,6 +214,7 @@ librespot.stdout.on('data', chunk => {
 		// TODO pipe or write chunk to discord
 	}
 });
+*/
 
 librespot.on('error', error => {
 	console.log(error);
@@ -709,6 +711,7 @@ client.on('voiceStateUpdate', (oldState, newState) => {
 		// dont know why but it works now
 		if (channelMembers.size == 1 && channelMembers.has(botID)) {
 			channelMembers.get(botID).voice.connection.disconnect();
+			// TODO pause Spotify
 		}
 	}
 });
@@ -882,9 +885,7 @@ function playSpotify(data, message, connection) {
 }
 
 function play(message, connection) {
-	LIBRESPOT_ACTIVE = true;
-
-	const dispatcher = connection.play();
+	const dispatcher = connection.play(librespot.stdout, { type: 'converted', highWaterMark: 12 });
 
 	dispatcher.on('start', () => {
 		console.log('Stream started');
