@@ -200,7 +200,7 @@ const librespot = spawn(
 		'-b', '320',
 		'-u', spotify_config.USERNAME,
 		'-p', spotify_config.PASSWORD,
-		'--backend', 'pipe',
+		'--backend', 'pipe', '-v'
 	]);
 
 librespot.stderr.pipe(process.stdout);
@@ -218,18 +218,28 @@ librespot.on('error', error => {
 	console.log(error);
 });
 
+librespot.on('exit', code => {
+	console.log(`Librespot exited with code ${code}!`);
+	if (code == 0) {
+		console.log('Stopping bot... Bye!');
+		process.exit(0);
+	}
+	else {
+		console.error(`--- LIBRESPOT EXITED WITH ERROR CODE ${code} ---\nIf you want to stop the bot press CTRL-Z!`);
+	}
+});
+
 // shorten config names that don't change and are needed often
 const botID = discord_config.BOT_ID;
 const spotifyOwnerDiscordID = discord_config.DISCORD_USER_ID_OF_SPOTIFY_ACCOUNT_OWNER;
 
-let prefix;
-let dispatcher;
-
+// define message templates
 const embedPing = new Discord.MessageEmbed().setColor('#1DB954').setTitle('Pong!');
 const embedDescriptionOnly = new Discord.MessageEmbed().setColor('#1DB954');
 const embedNow = new Discord.MessageEmbed().setColor('#1DB954');
 const embedHelp = new Discord.MessageEmbed().setColor('#1DB954').setTitle('Command list & explanations');
 
+// calling method for refreshing the spotify token with out arguments
 function refreshSpotifyTokenCaller() {
 	refreshSpotifyToken(spotify_config.REFRESH_TOKEN, spotify_config.CLIENT_ID, spotify_config.CLIENT_SECRET, res => {
 		let response = '';
@@ -291,6 +301,7 @@ client.on('message', async message => {
 		const locked = discord_config.LOCKED;
 
 		// get prefix from json
+		let prefix;
 		if (message.guild != null) {
 			if (message.guild.id in prefixes) {
 				prefix = prefixes[message.guild.id];
@@ -533,7 +544,7 @@ client.on('message', async message => {
 			}
 			else if (args[0] == 'true' || args[0] == 'on') {
 				console.log('Setting Shuffle mode to true.');
-				setShuffle(true, message); // TODO fix this vgl. changelog spotify-web-api-node
+				setShuffle(true, message);
 			}
 			else if (args[0] == 'false' || args[0] == 'off') {
 				console.log('Setting Shuffle mode to false.');
@@ -725,8 +736,13 @@ function setShuffle(state, message) {
 			message.react('👌');
 		},
 		function(error) {
-			console.error('--- ERROR SETTING SHUFFLE MODE ---', error);
-			message.channel.send(embedDescriptionOnly.setDescription('Shuffle mode could not be changed. Please try again later.'));
+			if ('NO_ACTIVE_DEVICE' in error) {
+				message.channel.send(embedDescriptionOnly.setDescription('Shuffle mode can only be changed when something is playing.'));
+			}
+			else {
+				console.error('--- ERROR SETTING SHUFFLE MODE ---', error);
+				message.channel.send(embedDescriptionOnly.setDescription('Shuffle mode could not be changed. Please try again later.'));
+			}
 		},
 	);
 }
@@ -737,8 +753,13 @@ function setRepeat(option, message) {
 			message.react('👌');
 		},
 		function(error) {
-			console.error('--- ERROR SETTING REPEAT MODE ---', error);
-			message.channel.send(embedDescriptionOnly.setDescription('Repeat mode could not be changed. Please try again later.'));
+			if ('NO_ACTIVE_DEVICE' in error) {
+				message.channel.send(embedDescriptionOnly.setDescription('Repeat mode can only be changed when something is playing.'));
+			}
+			else {
+				console.error('--- ERROR SETTING REPEAT MODE ---\n', error);
+				message.channel.send(embedDescriptionOnly.setDescription('Repeat mode could not be changed. Please try again later.'));
+			}
 		},
 	);
 }
@@ -783,6 +804,7 @@ function initializePlayback(data, message) {
 			message.channel.send(embedDescriptionOnly.setDescription('Please join the bot\'s voice channel first.'));
 		}
 	}
+	// if not then join the channel and create connection
 	else {
 		message.member.voice.channel.join().then(
 			connection => {
@@ -793,11 +815,12 @@ function initializePlayback(data, message) {
 }
 
 function initSpotify(data, message, connection) {
+	// if we already have the device ID start playback
 	if (spotify_config.DEVICE_ID) {
 		playSpotify(data, message, connection);
 	}
+	// if not get Device ID in Spotify Connect
 	else {
-		// get Device ID of Librespot in Spotify Connect
 		spotifyAPI.getMyDevices().then(
 			function(device_data) {
 				// check for device with name 'Librespot'
@@ -825,6 +848,9 @@ function initSpotify(data, message, connection) {
 }
 
 function playSpotify(data, message, connection) {
+	// start playback on Librespot Device
+
+	// transfer to Librespot
 	if (data.body.device.id != spotify_config.DEVICE_ID) {
 		spotifyAPI.transferMyPlayback(
 			[spotify_config.DEVICE_ID],
@@ -840,6 +866,7 @@ function playSpotify(data, message, connection) {
 			},
 		);
 	}
+	// else play it
 	else {
 		spotifyAPI.play().then(
 			function() {
@@ -857,12 +884,18 @@ function playSpotify(data, message, connection) {
 function play(message, connection) {
 	LIBRESPOT_ACTIVE = true;
 
+	const dispatcher = connection.play();
+
+	dispatcher.on('start', () => {
+		console.log('Stream started');
+	});
+
 	dispatcher.on('error', error => {
-		console.error('Dispatcher error', error);
+		console.error('Dispatcher error\n', error);
 	});
 
 	dispatcher.on('finish', () => {
-		console.log('Strean finished.');
+		console.log('Stream finished.');
 	});
 }
 
@@ -898,7 +931,12 @@ function buildList(array) {
 */
 
 process.on('SIGINT', () => {
-	console.log('Caught interrupt signal');
-	// TODO disconnect all voice connections, stop librespot gracefully
-	process.exit();
+	// logout from discord (that also ends all voice connections :ok_hand:)
+	client.destroy();
+
+	// stop librespot gracefully (send CTRL-C)
+	console.log('\nShutting down librespot...');
+	librespot.stdin.write('\x03');
+
+	// don't exit the process here, if shut down gracefully librespot.on('exit') listener will call process.exit()
 });
