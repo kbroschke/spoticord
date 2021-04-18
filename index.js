@@ -736,7 +736,7 @@ function setShuffle(state, message) {
 			message.react('👌');
 		},
 		function(error) {
-			if ('NO_ACTIVE_DEVICE' in error) {
+			if (error.toString().includes('NO_ACTIVE_DEVICE')) {
 				message.channel.send(embedDescriptionOnly.setDescription('Shuffle mode can only be changed when something is playing.'));
 			}
 			else {
@@ -753,7 +753,7 @@ function setRepeat(option, message) {
 			message.react('👌');
 		},
 		function(error) {
-			if ('NO_ACTIVE_DEVICE' in error) {
+			if (error.toString().includes('NO_ACTIVE_DEVICE')) {
 				message.channel.send(embedDescriptionOnly.setDescription('Repeat mode can only be changed when something is playing.'));
 			}
 			else {
