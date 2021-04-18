@@ -4,7 +4,7 @@
 
 ## Disclaimer  
 
-This code doesnt work, yet!
+You should not consider this code as production-ready. Sometimes audio behaves really funky and laggy and most of the time the pacing is a little off. However, I hope I can resolve these issues in the near future.
 
 ## Installation
 
