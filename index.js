@@ -204,17 +204,20 @@ const librespot = spawn(
 	]);
 
 librespot.stderr.pipe(process.stdout);
+// TODO fetch device_id when lirebspot has started on every startup
 
-/*
+let stop = false;
 librespot.stdout.on('data', chunk => {
-	if (!LIBRESPOT_ACTIVE) {
-		return;
+	if (!stop) {
+		console.log('---\n', chunk, '\n---');
+		fs.writeFileSync('chunk.txt', chunk);
+		// Experiment success: size of 1 chunk is 4096 Bytes
+		stop = true;
 	}
 	else {
-		// TODO pipe or write chunk to discord
+		return;
 	}
 });
-*/
 
 librespot.on('error', error => {
 	console.log(error);
@@ -381,48 +384,67 @@ client.on('message', async message => {
 				return;
 			}
 
-			if (args.length < 1) {
-				spotifyAPI.getMyCurrentPlaybackState().then(
-					function(data) {
+			spotifyAPI.getMyCurrentPlaybackState().then(
+				function(data) {
+					if (args.length < 1) {
 						if (JSON.stringify(data.body) == '{}') {
 							message.channel.send(embedDescriptionOnly.setDescription('Nothing\'s currently playing. You can start playback by providing a track after the `play` command.'));
 						}
-						else {
-							initializePlayback(data, message);
+						else if (data.body.device.id == spotify_config.DEVICE_ID) {
+							initializePlayback(message, null, false);
 						}
-					},
-					function(error) {
-						console.error('Playback state error', error);
-					},
-				);
-			}
-			else {
-				switch (args[0]) {
-				case '1':
-				case '2':
-				case '3':
-				case '4':
-				case '5':
-					// play results[args[0]];
-					message.channel.send(embedDescriptionOnly.setDescription('This feature is WIP'));
-					break;
-				case 'track':
-				case 'album':
-				case 'playlist':
-				case 'artist':
-					if (args.length < 2) {
-						message.channel.send(embedDescriptionOnly.setDescription(`You need to provide the name of the ${args[0]}!`));
+						else {
+							initializePlayback(message, null, true);
+						}
 					}
 					else {
-						searchSpotify(args[1], args[0], message);
+						switch (args[0]) {
+						case '1':
+						case '2':
+						case '3':
+						case '4':
+						case '5':
+							// TODO play results[args[0]];
+							message.channel.send(embedDescriptionOnly.setDescription('This feature is WIP'));
+							break;
+						case 'track':
+						case 'album':
+						case 'playlist':
+						case 'artist':
+							if (args.length < 2) {
+								message.channel.send(embedDescriptionOnly.setDescription(`You need to provide the name of the ${args[0]}!`));
+							}
+							else {
+								searchSpotify(args[1], args[0], message);
+							}
+							break;
+						default:
+							if (args[0].toString().startsWith('https://open.spotify.com/') || args[0].toString().startsWith('spotify:')) {
+								console.log(data.body);
+								if (JSON.stringify(data.body) == '{}') {
+									initializePlayback(message, args[0], true);
+								}
+								else if (data.body.device.id == spotify_config.DEVICE_ID) {
+									initializePlayback(message, args[0], false);
+								}
+								else {
+									initializePlayback(message, args[0], true);
+								}
+							}
+							else {
+								message.channel.send(embedDescriptionOnly.setDescription('Please specifiy search type ( `track` | `playlist` | `album` | `artist` )'));
+								// TODO call search with args[0]
+							}
+							break;
+						}
 					}
-					break;
-				default:
-					message.channel.send(embedDescriptionOnly.setDescription('Please specifiy search type ( `track` | `playlist` | `album` | `artist` )'));
-					break;
-				}
-			}
-			break;}
+				},
+				function(error) {
+					console.error('Playback state error', error);
+				},
+			);
+			break;
+		}
 		case 'pause':
 			if (locked) {
 				message.channel.send('Sorry, currently I\'m not available for this task.');
@@ -797,11 +819,11 @@ function searchSpotify(query, type, message) {
 	);
 }
 
-function initializePlayback(data, message) {
+function initializePlayback(message, link, transfer) {
 	// check if already in channel
 	if (message.guild.voice && message.guild.voice.channel) {
 		if (message.guild.voice.channel == message.member.voice.channel) {
-			initSpotify(data, message, message.guild.voice.connection);
+			initSpotify(message, link, transfer, message.guild.voice.connection);
 		}
 		else {
 			message.channel.send(embedDescriptionOnly.setDescription('Please join the bot\'s voice channel first.'));
@@ -811,33 +833,34 @@ function initializePlayback(data, message) {
 	else {
 		message.member.voice.channel.join().then(
 			connection => {
-				initSpotify(data, message, connection);
+				initSpotify(message, link, transfer, connection);
 			},
 		);
 	}
 }
 
-function initSpotify(data, message, connection) {
+// TODO check device id on startup, then remove this section
+function initSpotify(message, link, transfer, connection) {
 	// if we already have the device ID start playback
 	if (spotify_config.DEVICE_ID) {
-		playSpotify(data, message, connection);
+		playSpotify(message, link, transfer, connection);
 	}
 	// if not get Device ID in Spotify Connect
 	else {
 		spotifyAPI.getMyDevices().then(
-			function(device_data) {
+			function(data) {
 				// check for device with name 'Librespot'
-				if (device_data.body.devices) {
-					for (let index = 0; index < device_data.body.devices.length; index++) {
-						if (device_data.body.devices[index].name == 'Librespot') {
-							spotify_config.DEVICE_ID = device_data.body.devices[index].id;
+				if (data.body.devices) {
+					for (let index = 0; index < data.body.devices.length; index++) {
+						if (data.body.devices[index].name == 'Librespot') {
+							spotify_config.DEVICE_ID = data.body.devices[index].id;
 							fs.writeFile('./config/spotify.json', JSON.stringify(spotify_config, null, 4), error => {
 								if (error) {
 									console.error('Failed writing Spotify Device ID. I\'ll try again next time.');
 									console.error(error);
 								}
 							});
-							playSpotify(data, message, connection);
+							playSpotify(message, link, transfer, connection);
 						}
 					}
 				}
@@ -850,34 +873,79 @@ function initSpotify(data, message, connection) {
 	}
 }
 
-function playSpotify(data, message, connection) {
+function playSpotify(message, link, transfer, connection) {
 	// start playback on Librespot Device
 
-	// transfer to Librespot
-	if (data.body.device.id != spotify_config.DEVICE_ID) {
-		spotifyAPI.transferMyPlayback(
-			[spotify_config.DEVICE_ID],
-			{ play: true },
+	// start playing specified URL on Librespot device
+	if (link) {
+		if (transfer) {
+			spotifyAPI.transferMyPlayback([spotify_config.DEVICE_ID]).then(
+				function() {
+					spotifyAPI.play(
+						{
+							device_id: spotify_config.DEVICE_ID,
+							uris: [link],
+						},
+					).then(
+						function() {
+							play(message, connection);
+							message.react('▶️');
+						},
+						function(error) {
+							console.error('--- ERROR STARTING SPOTIFY PLAYBACK ---\n', error);
+							message.channel.send(embedDescriptionOnly.setDescription('Playback could not be started. Please try again later.'));
+						},
+					);
+				},
+				function(error) {
+					console.error('--- ERROR STARTING SPOTIFY PLAYBACK ---\n', error);
+					message.channel.send(embedDescriptionOnly.setDescription('Playback could not be started. Please try again later.'));
+				},
+			);
+		}
+		else {
+			spotifyAPI.play(
+				{
+					device_id: spotify_config.DEVICE_ID,
+					uris: [link],
+				},
+			).then(
+				function() {
+					play(message, connection);
+					message.react('▶️');
+				},
+				function(error) {
+					console.error('--- ERROR STARTING SPOTIFY PLAYBACK ---\n', error);
+					message.channel.send(embedDescriptionOnly.setDescription('Playback could not be started. Please try again later.'));
+				},
+			);
+		}
+	}
+	// else just start playback
+	else if (transfer) {
+		spotifyAPI.transferMyPlayback([spotify_config.DEVICE_ID], { play: true }).then(
+			function() {
+				play(message, connection);
+				message.react('▶️');
+			},
+			function(error) {
+				console.error('--- ERROR STARTING SPOTIFY PLAYBACK ---\n', error);
+				message.channel.send(embedDescriptionOnly.setDescription('Playback could not be started. Please try again later.'));
+			},
+		);
+	}
+	else {
+		spotifyAPI.play(
+			{
+				device_id: spotify_config.DEVICE_ID,
+			},
 		).then(
 			function() {
 				play(message, connection);
 				message.react('▶️');
 			},
 			function(error) {
-				console.error('Playback transfer error', error);
-				message.channel.send(embedDescriptionOnly.setDescription('Playback could not be started. Please try again later.'));
-			},
-		);
-	}
-	// else play it
-	else {
-		spotifyAPI.play().then(
-			function() {
-				play(message, connection);
-				message.react('▶️');
-			},
-			function(error) {
-				console.error('Playback error\n', error);
+				console.error('--- ERROR STARTING SPOTIFY PLAYBACK ---\n', error);
 				message.channel.send(embedDescriptionOnly.setDescription('Playback could not be started. Please try again later.'));
 			},
 		);
@@ -885,7 +953,8 @@ function playSpotify(data, message, connection) {
 }
 
 function play(message, connection) {
-	const dispatcher = connection.play(librespot.stdout, { type: 'converted', highWaterMark: 12 });
+	// TODO check if dispatcher is already playing, handle accordingly
+	const dispatcher = connection.play(librespot.stdout, { type: 'converted', highWaterMark: 24 });
 
 	dispatcher.on('start', () => {
 		console.log('Stream started');
