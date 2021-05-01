@@ -2,16 +2,32 @@
 
 *spoticord* is a discord bot that allows you to play your music directly from spotify to discord. You need to host your own instance of this bot because it ties directly to your Spotify account. You need an Spotify Premium account for this to work.
 
+## Disclaimer  
+
+You should not consider this code as production-ready. Sometimes audio behaves really funky and laggy and most of the time the pacing is a little off. However, I hope I can resolve these issues in the near future.
+
 ## Installation
 
-__TBD__
+__TBD/WIP__
 but here's a rough outline:
 - install node (v14)
+  - I recommend using nvm 
 - install librespot
+  - download a precompiled version or
+  - clone [their repo](https://github.com/librespot-org/librespot)
+  - build with ```cargo build --release --no-default-features```
 - download this bot
-- create run-script with Spotify credentials for librespot
-- create config-file with Discord's and Spotify's API tokens
-- start with ```node .```
+- install dependencies: ```npm ci```
+- create a new application (and bot) in [Discord's Developer Portal](https://discord.com/developers/applications)
+- create a new app in [Spotify's Developer Dashboard](https://developer.spotify.com/dashboard/applications)
+- create run-script with Spotify credentials for librespot (TODO: create template)
+- create config-file with Discord's and Spotify's API tokens (TODO: create template)
+- start bot with ```node .```
+
+## Usage
+
+Default command prefix is ```$``` but you can also mention the bot instead of using the prefix.  
+```$help``` will send you an summary of all available commands.
 
 ## Disclaimer
 
