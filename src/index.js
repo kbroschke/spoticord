@@ -43,15 +43,15 @@ const client = new Discord.Client();
 let spotifyAPI;
 
 // create config dir if not exists
-if (!fs.existsSync('./config')) {
-    fs.mkdirSync('./config');
+if (!fs.existsSync('../config')) {
+    fs.mkdirSync('../config');
 }
 
 // load discord config
 let discord_config;
 try {
     console.log('Loading discord config...');
-    discord_config = require('./config/discord.json');
+    discord_config = require('../config/discord.json');
     if (discord_config.BOT_ID && discord_config.BOT_TOKEN) {
         if (!discord_config.DISCORD_USER_ID_OF_SPOTIFY_ACCOUNT_OWNER) {
             discord_config.LOCKED = false;
@@ -71,9 +71,9 @@ catch(error) {
         'DISCORD_USER_ID_OF_SPOTIFY_ACCOUNT_OWNER': '',
         'LOCKED': false,
     };
-    fs.writeFileSync('./config/discord.json', JSON.stringify(default_config, null, 4));
+    fs.writeFileSync('../config/discord.json', JSON.stringify(default_config, null, 4));
     console.log(
-        'The template was saved to ./config/discord.json\n' +
+        'The template was saved to ../config/discord.json\n' +
 		'Please fill it with your information. Only the bot\'s ID and token are required for the bot to work.\n' +
 		'Both can be found at https://discord.com/developers/applications.\n' +
 		'(The BOT_ID under General Information > Application ID)\n' +
@@ -88,7 +88,7 @@ catch(error) {
 let spotify_config;
 try {
     console.log('Loading spotify config...');
-    spotify_config = require('./config/spotify.json');
+    spotify_config = require('../config/spotify.json');
     if (spotify_config.CLIENT_ID && spotify_config.CLIENT_SECRET && spotify_config.USERNAME && spotify_config.PASSWORD && spotify_config.LIBRESPOT_PATH) {
         spotifyAPI = new SpotifyWebApi({
             clientId: spotify_config.CLIENT_ID,
@@ -102,7 +102,7 @@ try {
             spotifyAPI.authorizationCodeGrant(spotify_config.AUTH_CODE).then(
                 function(data) {
                     spotify_config.REFRESH_TOKEN = data.body['refresh_token'];
-                    fs.writeFileSync('./config/spotify.json', JSON.stringify(spotify_config, null, 4));
+                    fs.writeFileSync('../config/spotify.json', JSON.stringify(spotify_config, null, 4));
                     console.log('Successfully updated refresh token!');
                     console.log('Please start the bot again. (I promise, this should be the last time)');
                     process.exit();
@@ -139,7 +139,7 @@ try {
         }
     }
     else {
-        console.log('Can\'t load config file! A required parameter is missing. Please check the config file at ./config/spotify.json.');
+        console.log('Can\'t load config file! A required parameter is missing. Please check the config file at ../config/spotify.json.');
         process.exit();
     }
 }
@@ -154,9 +154,9 @@ catch(error) {
         'PASSWORD': '',
         'LIBRESPOT_PATH': '',
     };
-    fs.writeFileSync('./config/spotify.json', JSON.stringify(default_config, null, 4));
+    fs.writeFileSync('../config/spotify.json', JSON.stringify(default_config, null, 4));
     console.log(
-        'The template was saved to ./config/spotify.json\n' +
+        'The template was saved to ../config/spotify.json\n' +
 		'Please read the following instructions carefully.\n\n' +
 		'Please fill it with your information. Please fill in everything except the refresh token and auth code for now.\n' +
 		'Your Client ID & Secret can be found at https://developer.spotify.com/dashboard/applications.\n' +
@@ -177,12 +177,12 @@ catch(error) {
 let prefixes;
 try {
     console.log('Loading server specific prefixes...');
-    prefixes = require('./config/prefixes.json');
+    prefixes = require('../config/prefixes.json');
     console.log('Prefixes loaded successfully!');
 }
 catch(err) {
     console.error('Error loading prefixes. Creating empty file.');
-    fs.writeFileSync('./config/prefixes.json', '{}');
+    fs.writeFileSync('../config/prefixes.json', '{}');
     console.error('If you have old data to import, stop the bot now and place your prefixes.json file back in the config directory.');
 }
 
@@ -351,7 +351,7 @@ client.on('message', async message => {
         commandBody = commandBody.trim();
 
         // split message into array
-        const args = commandBody.split(' ');
+        const args = commandBody.split(/ +/);
         // make everything lowercase
         args.map(item => item.toLowerCase());
         // remove command from other arguments
@@ -387,7 +387,7 @@ client.on('message', async message => {
 
             spotifyAPI.getMyCurrentPlaybackState().then(
                 function(data) {
-                    if (args.length < 1) {
+                    if (!args.length) {
                         if (JSON.stringify(data.body) == '{}') {
                             message.channel.send(embedDescriptionOnly.setDescription('Nothing\'s currently playing. You can start playback by providing a track after the `play` command.'));
                         }
@@ -406,6 +406,7 @@ client.on('message', async message => {
                         case '4':
                         case '5':
                             // TODO play results[args[0]];
+                            // use TextChannel.awaitMessages();
                             message.channel.send(embedDescriptionOnly.setDescription('This feature is WIP'));
                             break;
                         case 'track':
@@ -436,8 +437,7 @@ client.on('message', async message => {
                                 }
                             }
                             else {
-                                // message.channel.send(embedDescriptionOnly.setDescription('Please specifiy search type ( `track` | `playlist` | `album` | `artist` )'));
-                                searchSpotify(args.join(' '), ['track', 'artist', 'album', 'playlist'], message);
+                                searchSpotify(args.join(' '), ['track', 'album', 'playlist'], message);
                             }
                             break;
                         }
@@ -548,7 +548,7 @@ client.on('message', async message => {
             );
             break;
         case 'prefix':
-            if (args.length < 1) {
+            if (!args.length) {
                 message.channel.send(embedDescriptionOnly.setDescription('Current command prefix is `' + prefix + '`'));
             }
             else if(!message.member.hasPermission('ADMINISTRATOR')) {
@@ -557,7 +557,7 @@ client.on('message', async message => {
             else {
                 prefix = args.join(' ');
                 prefixes[message.guild.id] = prefix;
-                fs.writeFile('./config/prefixes.json', JSON.stringify(prefixes, null, 4), error => {
+                fs.writeFile('../config/prefixes.json', JSON.stringify(prefixes, null, 4), error => {
                     if (error) {
                         console.error('--- FS WRITE ERROR ---', error);
                         message.channel.send('Sorry! There was an internal error!');
@@ -567,7 +567,7 @@ client.on('message', async message => {
             }
             break;
         case 'shuffle':
-            if (args.length < 1) {
+            if (!args.length) {
                 message.channel.send(embedDescriptionOnly.setDescription('Possible arguments: `true`/`on` or `false`/`off`.'));
             }
             else if (args[0] == 'true' || args[0] == 'on') {
@@ -580,7 +580,7 @@ client.on('message', async message => {
             }
             break;
         case 'repeat':
-            if (args.length < 1) {
+            if (!args.length) {
                 message.channel.send(embedDescriptionOnly.setDescription('Possible arguments: `track`, `context` or `off`.'));
             }
             else if (args[0] == 'track') {
@@ -664,7 +664,7 @@ client.on('message', async message => {
             if (message.member.user.id == spotifyOwnerDiscordID) {
                 if (!locked) {
                     discord_config.LOCKED = true;
-                    fs.writeFile('./config/discord_config.json', JSON.stringify(discord_config, null, 4), error => {
+                    fs.writeFile('../config/discord_config.json', JSON.stringify(discord_config, null, 4), error => {
                         if (error) {
                             console.log('--- FS WRITE ERROR ---', error);
                             message.channel.send('Sorry! There was an internal error!');
@@ -683,7 +683,7 @@ client.on('message', async message => {
             if (message.member.user.id == spotifyOwnerDiscordID) {
                 if (locked) {
                     discord_config.LOCKED = false;
-                    fs.writeFile('./config/discord_config.json', JSON.stringify(discord_config, null, 4), error => {
+                    fs.writeFile('../config/discord_config.json', JSON.stringify(discord_config, null, 4), error => {
                         if (error) {
                             console.log('--- FS WRITE ERROR ---', error);
                             message.channel.send('Sorry! There was an internal error!');
@@ -829,14 +829,32 @@ function searchSpotify(query, type, message) {
                 sendResults(message, items);
                 break;
             }
-            default: {
+            case 'all': {
                 const items = [];
-                items.push(data.body.tracks.items[0]);
-                items.push(data.body.albums.items[0]);
-                items.push(data.body.playlists.items[0]);
-                items.push(data.body.artists.items[0]);
+                // merge all results together
+                let old_item_length = 0;
+
+                const append_item = (dataitems) => {
+                    if (items.length >= 10 && dataitems.length) {
+                        items.push(dataitems.shift());
+                    }
+                };
+
+                while (items.length < 10) {
+
+                    old_item_length = items.length;
+
+                    append_item(data.body.tracks.items);
+                    append_item(data.body.albums.items);
+                    append_item(data.body.playlists.items);
+
+                    if (old_item_length === items.length) break;
+                }
+
                 sendResults(message, items);
                 break;
+
+
             }
             }
         },
@@ -848,7 +866,7 @@ function searchSpotify(query, type, message) {
 }
 
 function sendResults(message, items) {
-    if (items.length == 0) {
+    if (!items.length) {
         sendSearchUnsuccessful(message);
     }
     else {
@@ -873,22 +891,40 @@ function sendResults(message, items) {
             case 4:
                 _index = ':five:';
                 break;
+            case 5:
+                _index = ':six:';
+                break;
+            case 6:
+                _index = ':seven:';
+                break;
+            case 7:
+                _index = ':eight:';
+                break;
+            case 8:
+                _index = ':nine:';
+                break;
+            case 9:
+                _index = ':keycap_ten:';
+                break;
             default:
                 _index = index + 1;
                 break;
             }
 
+            answer += `${_index}: ${element.name}`;
+
             switch (element.type) {
             case 'artist':
-                answer += `${_index}: ${element.name} \`${element.type}\`\n`;
                 break;
             case 'playlist':
-                answer += `${_index}: ${element.name} by ${element.owner.display_name} \`${element.type}\`\n`;
+                answer += ` by ${element.owner.display_name}`;
                 break;
             default:
-                answer += `${_index}: ${element.name} by ${element.artists[0].name} \`${element.type}\`\n`;
+                answer += ` by ${element.artists[0].name}`;
                 break;
             }
+
+            answer += ` \`${element.type}\`\n`;
         });
 
         message.channel.send(embedSearch.setDescription(answer));
@@ -930,7 +966,7 @@ function initSpotify(message, link, transfer, connection) {
                     for (let index = 0; index < data.body.devices.length; index++) {
                         if (data.body.devices[index].name == 'Librespot') {
                             spotify_config.DEVICE_ID = data.body.devices[index].id;
-                            fs.writeFile('./config/spotify.json', JSON.stringify(spotify_config, null, 4), error => {
+                            fs.writeFile('../config/spotify.json', JSON.stringify(spotify_config, null, 4), error => {
                                 if (error) {
                                     console.error('Failed writing Spotify Device ID. I\'ll try again next time.');
                                     console.error(error);
