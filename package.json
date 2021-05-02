@@ -2,7 +2,7 @@
   "name": "spoticord",
   "version": "1.0.0",
   "description": "*spoticord* is a discord bot that allows you to play your music directly from spotify to discord. You need to host your own instance of this bot because it ties directly to your Spotify account. You need an Spotify Premium account for this to work.",
-  "main": "index.js",
+  "main": "src/index.js",
   "dependencies": {
     "@discordjs/opus": "^0.5.0",
     "bufferutil": "^4.0.3",
@@ -20,10 +20,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/chillkroetenstyle/spoticord.git"
+    "url": "git+https://github.com/kbroschke/spoticord.git"
   },
   "bugs": {
-    "url": "https://github.com/chillkroetenstyle/spoticord/issues"
+    "url": "https://github.com/kbroschke/spoticord/issues"
   },
-  "homepage": "https://github.com/chillkroetenstyle/spoticord#readme"
+  "homepage": "https://github.com/kbroschke/spoticord#readme"
 }
