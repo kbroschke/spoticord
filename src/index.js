@@ -4,8 +4,7 @@ const Discord = require('discord.js');
 const fs = require('fs');
 const SpotifyWebApi = require('spotify-web-api-node');
 const { spawn } = require('child_process');
-const https = require('https');
-const querystring = require('querystring');
+const refreshSpotifyToken = require('./refreshSpotifyToken');
 
 console.log('Loading configs...');
 // create config dir if not exists
@@ -152,7 +151,7 @@ for (const file of commandFiles) {
 }
 
 for (const file of eventFiles) {
-	const event = require(`./src/events/discord/${file}`);
+	const event = require(`./events/discord/${file}`);
 	if (event.once) {
 		client.once(event.name, (...args) => event.execute(...args, client, spotifyAPI));
 	}
@@ -210,9 +209,10 @@ librespot.on('exit', code => {
 
 // every spotify access_token is valid for 3600 sec (60min)
 // setInterval: refresh the access_token every ~50min
-setInterval(refreshSpotifyToken, 3000000);
+setInterval(refreshSpotifyToken.execute, 3000000, spotifyAPI, spotify_config);
 // call it for first time, so we have access right away and not in 50 min...
-refreshSpotifyToken();
+refreshSpotifyToken.execute(spotifyAPI, spotify_config);
+
 
 process.on('SIGINT', () => {
 	// logout from discord (that also ends all voice connections :ok_hand:)
@@ -228,63 +228,3 @@ process.on('SIGINT', () => {
 client.login(BOT_TOKEN).then(() => {
 	console.log('Discord login complete.');
 });
-
-function refreshSpotifyToken() {
-	console.log('Refreshing Spotify\'s Access Token...');
-	const data = querystring.stringify({
-		'grant_type': 'refresh_token',
-		'refresh_token': spotify_config.REFRESH_TOKEN,
-	});
-	const auth = 'Basic ' + new Buffer.from(`${spotify_config.CLIENT_ID}:${spotify_config.CLIENT_SECRET}`).toString('base64');
-	const options = {
-		hostname: 'accounts.spotify.com',
-		port: 443,
-		path: '/api/token',
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded',
-			'Content-Length': data.length,
-			'Authorization': auth,
-		},
-	};
-
-	const req = https.request(options, res => {
-		let response = '';
-
-		res.on('data', chunk => {
-			response += chunk;
-		});
-
-		res.on('end', () => {
-			if (res.statusCode == 200) {
-				spotifyAPI.setAccessToken(JSON.parse(response).access_token);
-				console.log('Successfully updated Spotify Access Token!');
-				spotifyAPI.getMe().then(
-					function(spotify_api_data) {
-						console.log('Authenticated with Spotify Api as:', spotify_api_data.body.email);
-					},
-					function(error) {
-						console.error('--- ERROR INITIALIZING SPOTIFY WEB API ---\n', error);
-					},
-				);
-			}
-			else {
-				console.error(
-					'--- SPOTIFY API RESPONSE ERROR ---\n',
-					`HTTPS status code: ${res.statusCode}\n`,
-					'Response body:\n' + response);
-			}
-		});
-
-		res.on('error', error => {
-			console.error(error);
-		});
-	});
-
-	req.on('error', error => {
-		console.error('--- HTTPS ERROR ---\n' + error);
-	});
-
-	req.write(data);
-	req.end();
-}
