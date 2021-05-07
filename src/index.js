@@ -7,19 +7,7 @@ const { spawn } = require('child_process');
 const https = require('https');
 const querystring = require('querystring');
 
-const client = new Discord.Client();
-client.commands = new Discord.Collection();
-
-const commandFiles = fs.readdirSync('./src/commands').filter(file => file.endsWith('.js'));
-
-for (const file of commandFiles) {
-	const command = require(`./commands/${file}`);
-
-	// set a new item in the Collection
-	// with the key as the command name and the value as the exported module
-	client.commands.set(command.name, command);
-}
-
+console.log('Loading configs...');
 // create config dir if not exists
 if (!fs.existsSync('../config')) {
 	fs.mkdirSync('../config');
@@ -146,22 +134,35 @@ catch(error) {
 	process.exit();
 }
 
-// load the server-specific prefixes
-let prefixes;
-try {
-	console.log('Loading server specific prefixes...');
-	prefixes = require('../config/prefixes.json');
-	console.log('Prefixes loaded successfully!');
-}
-catch(err) {
-	console.error('Error loading prefixes. Creating empty file.');
+// make sure proper prefix-file exists
+if (!fs.existsSync('../config/prefixes.json')) {
 	fs.writeFileSync('../config/prefixes.json', '{}');
-	console.error('If you have old data to import, stop the bot now and place your prefixes.json file back in the config directory.');
 }
 
-console.log('Initialization complete. Starting Librespot.');
+console.log('Initiliazing discord client...');
+const client = new Discord.Client();
+client.commands = new Discord.Collection();
 
-// start librespot
+const commandFiles = fs.readdirSync('./src/commands').filter(file => file.endsWith('.js'));
+const eventFiles = fs.readdirSync('./src/events/discord').filter(file => file.endsWith('.js'));
+
+for (const file of commandFiles) {
+	const command = require(`./commands/${file}`);
+	client.commands.set(command.name, command);
+}
+
+for (const file of eventFiles) {
+	const event = require(`./src/events/discord/${file}`);
+	if (event.once) {
+		client.once(event.name, (...args) => event.execute(...args, client, spotifyAPI));
+	}
+	else {
+		client.on(event.name, (...args) => event.execute(...args, client, spotifyAPI));
+	}
+}
+
+console.log('Initializing librespot...');
+
 const librespot = spawn(
 	spotify_config.LIBRESPOT_PATH,
 	[
@@ -212,100 +213,6 @@ librespot.on('exit', code => {
 setInterval(refreshSpotifyToken, 3000000);
 // call it for first time, so we have access right away and not in 50 min...
 refreshSpotifyToken();
-
-
-// Incoming message event
-client.on('message', async message => {
-	// dont react to other Bots
-	if (message.author.bot) return;
-
-	// get prefix from json values
-	let prefix;
-	if (message.guild != null) {
-		if (message.guild.id in prefixes) {
-			prefix = prefixes[message.guild.id];
-		}
-		else {
-			// default to this prefix
-			prefix = '$';
-		}
-	}
-	else {
-		// if guild is null then it's a DM
-		message.reply(
-			'Please message me on a server, I\'m not comfortable with private messages.\n' +
-				'But here\'s a neat trick:\n' +
-				'You can mention me instead of using a prefix.\n' +
-				'Example: To show the currently selected prefix send: ```@[me] prefix```');
-		return;
-	}
-
-	// extract command and arguments from message
-	let commandFull = message.content.trim();
-
-	if (commandFull.startsWith(prefix)) {
-		// remove prefix if there
-		commandFull = message.content.slice(prefix.length);
-	}
-	else if (message.mentions.has(client.user)) {
-		// remove mention from front (no regrets :D  -> idea for smarter filter: mentions includes message.author.id )
-		commandFull = message.content.slice(client.user.id.length + 4);
-	}
-	else {return;}
-
-	// remove possible whitespaces between prefix and command
-	commandFull = commandFull.trim();
-
-	// split message into array
-	const args = commandFull.split(/ +/);
-	// remove command from other arguments
-	const command = args.shift().toLowerCase();
-
-	if (!client.commands.has(command)) return;
-
-	try {
-		client.commands.get(command).execute(message, args, spotifyAPI);
-	}
-	catch (error) {
-		console.error(error);
-		message.reply('there was an error trying to execute that command!');
-	}
-});
-
-client.once('ready', () => {
-	console.log('Discord bot is ready!');
-	client.user.setActivity('@me help', { type: 'LISTENING' });
-});
-
-// leave if last one in channel
-client.on('voiceStateUpdate', (oldState, newState) => {
-	if (oldState.channel == null) {
-		return;
-	}
-	else {
-		let channelMembers;
-
-		if (oldState.id == client.user.id) {
-			if (newState.channel == null) {
-				return;
-			}
-			else {
-				channelMembers = newState.channel.members;
-			}
-		}
-		// check oldState because if user leaves then newState.channel is null
-		else {
-			channelMembers = oldState.channel.members;
-		}
-
-		// when user leaves oldState does NOT include this user in channel.members
-		// dont know why but it works now
-		if (channelMembers.size == 1 && channelMembers.has(client.user.id)) {
-			channelMembers.get(client.user.id).voice.connection.disconnect();
-			// TODO pause Spotify
-		}
-	}
-});
 
 process.on('SIGINT', () => {
 	// logout from discord (that also ends all voice connections :ok_hand:)
