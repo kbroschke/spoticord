@@ -143,14 +143,16 @@ const client = new Discord.Client();
 client.commands = new Discord.Collection();
 
 const commandFiles = fs.readdirSync('./src/commands').filter(file => file.endsWith('.js'));
-const eventFiles = fs.readdirSync('./src/events/discord').filter(file => file.endsWith('.js'));
+const eventFilesDiscord = fs.readdirSync('./src/events/discord').filter(file => file.endsWith('.js'));
+const eventFilesLibrespot = fs.readdirSync('./src/events/librespot').filter(file => file.endsWith('.js'));
+const eventFilesProcess = fs.readdirSync('./src/events/process').filter(file => file.endsWith('.js'));
 
 for (const file of commandFiles) {
 	const command = require(`./commands/${file}`);
 	client.commands.set(command.name, command);
 }
 
-for (const file of eventFiles) {
+for (const file of eventFilesDiscord) {
 	const event = require(`./events/discord/${file}`);
 	if (event.once) {
 		client.once(event.name, (...args) => event.execute(...args, client, spotifyAPI));
@@ -176,6 +178,16 @@ const librespot = spawn(
 		'-v',
 	]);
 
+for (const file of eventFilesLibrespot) {
+	const event = require(`./events/librespot/${file}`);
+	librespot.on(event.name, (...args) => event.execute(...args));
+}
+
+for (const file of eventFilesProcess) {
+	const event = require(`./events/process/${file}`);
+	process.on(event.name, (...args) => event.execute(...args, client, librespot));
+}
+
 librespot.stderr.pipe(process.stdout);
 // TODO fetch device_id when lirebspot has started on every startup
 
@@ -192,38 +204,11 @@ librespot.stdout.on('data', chunk => {
 	}
 });
 
-librespot.on('error', error => {
-	console.log(error);
-});
-
-librespot.on('exit', code => {
-	console.log(`Librespot exited with code ${code}!`);
-	if (code == 0) {
-		console.log('Stopping bot... Bye!');
-		process.exit(0);
-	}
-	else {
-		console.error(`--- LIBRESPOT EXITED WITH ERROR CODE ${code} ---\nIf you want to stop the bot press CTRL-Z!`);
-	}
-});
-
 // every spotify access_token is valid for 3600 sec (60min)
 // setInterval: refresh the access_token every ~50min
 setInterval(refreshSpotifyToken.execute, 3000000, spotifyAPI, spotify_config);
 // call it for first time, so we have access right away and not in 50 min...
 refreshSpotifyToken.execute(spotifyAPI, spotify_config);
-
-
-process.on('SIGINT', () => {
-	// logout from discord (that also ends all voice connections :ok_hand:)
-	client.destroy();
-
-	// stop librespot gracefully (send CTRL-C)
-	console.log('\nShutting down librespot...');
-	librespot.stdin.write('\x03');
-
-	// don't exit the process here, if shut down gracefully librespot.on('exit') listener will call process.exit()
-});
 
 client.login(BOT_TOKEN).then(() => {
 	console.log('Discord login complete.');

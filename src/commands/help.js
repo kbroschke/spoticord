@@ -27,34 +27,37 @@ module.exports = {
 			'• `' + prefix + 'prefix`\n' +
 			'> Shows current prefix\n' +
 			'• `' + prefix + 'prefix <new prefix>`\n' +
-			'> \n\n' +
+			'> Set\'s new prefix for this server.\n\n' +
 			// now
 			'• `' + prefix + 'now`\n' +
 			'> Shows info about currently playing track.\n' +
 			// play
 			'• `' + prefix + 'play`\n' +
 			'> Unpauses spotify player.\n' +
+			'• `' + prefix + 'play <spotify link>`\n' +
+			'> Start spotify playback of given link.\n' +
+			'• `' + prefix + 'play <name>`\n' +
+			'> Search spotify for things with this name.\n' +
 			'• `' + prefix + 'play [track|playlist|album|artist] <name>`\n' +
-			'> Start playback of given track/playlist/album/artist.\n' +
+			'> Search spotify for tracks/playlists/albums/artists with this name.\n' +
 			// pause
 			'• `' + prefix + 'pause`\n' +
 			'> Pauses spotify player.\n' +
 			// stop || leave
-			'• `' + prefix + 'stop` or `' + prefix + 'leave`\n' +
+			'• `' + prefix + 'stop`\n' +
 			'> Pauses spotify player and disconnects from voice channel.\n\n' +
-			// TODO add modes
 			// shuffle
 			'• `' + prefix + 'shuffle [mode]`\n' +
-			'> Sets shuffle mode. Execute without mode to see all available modes.\n' +
+			'> Sets shuffle mode. Possible modes are `on` and `off`.\n' +
 			// repeat
 			'• `' + prefix + 'repeat [mode]`\n' +
-			'> Sets repeat mode. Execute without mode to see all available modes.\n' +
+			'> Sets repeat mode. Possible modes are `track`, `context` and `off`.\n' +
 			// skip
 			'• `' + prefix + 'skip`\n' +
 			'> Skip to next track in queue.\n' +
 			// again
 			'• `' + prefix + 'again`\n' +
-			'> Skip to previously played track.\n' +
+			'> Skip to previously played track. In certain situations this just starts the currently playing track again.\n' +
 			'',
 		));
 		// not listed: help, lock, unlock
