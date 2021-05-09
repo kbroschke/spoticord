@@ -1,6 +1,6 @@
 module.exports = {
 	name: 'SIGINT',
-	execute(signal, client, librespot) {
+	execute(signal, randomNumber, client, librespot) {
 		// logout from discord (that also ends all voice connections :ok_hand:)
 		client.destroy();
 
