@@ -1,15 +1,17 @@
-const https = require('https');
-const querystring = require('querystring');
+import https from 'https';
+import querystring from 'querystring';
+import SpotifyWebApi from "spotify-web-api-node";
+import spotify_config from '../config/spotify.json';
 
-module.exports = {
+export default {
 	name: 'refreshSpotifyToken',
-	execute(spotifyAPI, spotify_config) {
+	execute: (spotifyAPI: SpotifyWebApi) => {
 		console.log('Refreshing Spotify\'s Access Token...');
 		const data = querystring.stringify({
 			'grant_type': 'refresh_token',
 			'refresh_token': spotify_config.REFRESH_TOKEN,
 		});
-		const auth = 'Basic ' + new Buffer.from(`${spotify_config.CLIENT_ID}:${spotify_config.CLIENT_SECRET}`).toString('base64');
+		const auth = 'Basic ' + Buffer.from(`${spotify_config.CLIENT_ID}:${spotify_config.CLIENT_SECRET}`).toString('base64');
 		const options = {
 			hostname: 'accounts.spotify.com',
 			port: 443,
