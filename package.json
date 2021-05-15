@@ -2,7 +2,7 @@
   "name": "spoticord",
   "version": "1.0.0",
   "description": "*spoticord* is a discord bot that allows you to play your music directly from spotify to discord. You need to host your own instance of this bot because it ties directly to your Spotify account. You need an Spotify Premium account for this to work.",
-  "main": "src/index.js",
+  "main": "build/src/index.js",
   "dependencies": {
     "@discordjs/opus": "^0.5.0",
     "bufferutil": "^4.0.3",
@@ -12,7 +12,14 @@
     "utf-8-validate": "^5.0.5",
     "zlib-sync": "^0.1.7"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "@types/node": "^15.3.0",
+    "@types/spotify-web-api-node": "^5.0.2",
+    "@typescript-eslint/eslint-plugin": "^4.23.0",
+    "@typescript-eslint/parser": "^4.23.0",
+    "eslint": "^7.26.0",
+    "eslint-config-google": "^0.14.0"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
