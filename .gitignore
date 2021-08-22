@@ -111,4 +111,4 @@ dist
 
 # config files with bot tokens
 config/
-build/config
+lib/librespot
