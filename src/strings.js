@@ -20,6 +20,7 @@ module.exports = {
 		authError: "Something went wrong while sending the auth code to Spotify.\n" +
 		"Please make sure to paste the whole code you got in the resulting redirect URL and make sure to leave out additional endings like '&state='.\n" +
 		"If you need a new auth code, just remove the current one from the config file and start the init script again.",
+		configNotFoundRunning: "A required field in Spotify config is missing. Please check the installation instructions.",
 	},
 	discord: {
 		configNotFound: "The template was saved to ../config/discord.json\n" +
@@ -27,5 +28,6 @@ module.exports = {
 		"Please fill in your bot token for the Discord API. It's required for the bot to work.\n" +
 		"It can be found at https://discord.com/developers/applications (under Bot > Token).\n",
 		// 'The DISCORD_USER_ID_OF_SPOTIFY_ACCOUNT_OWNER can be left as an empty String if the feature for locking the bot is not needed.\n' +
+		configNotFoundRunning: "A required field in Discord config is missing. Please check the installation instructions.",
 	},
 };
