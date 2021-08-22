@@ -30,7 +30,7 @@ You should not consider this code as production-ready. Sometimes audio behaves r
 
 ## Usage
 
-Start bot with ```node .```
+Start bot with ```node .```\\
 Default command prefix is ```$``` but you can also mention the bot instead of using the prefix.  
 ```$help``` will send you an summary of all available commands.
 
