@@ -28,7 +28,6 @@ const defaultConfigSpotify = {
 	"AUTH_CODE": "",
 	"USERNAME": "",
 	"PASSWORD": "",
-	"LIBRESPOT_PATH": "",
 };
 fs.writeFileSync("./config/spotify.json",
 	JSON.stringify(defaultConfigSpotify, null, 4));
