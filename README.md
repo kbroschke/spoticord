@@ -1,6 +1,6 @@
 # spoticord
 
-*spoticord* is a discord bot that allows you to play your music directly from spotify to discord. You need to host your own instance of this bot because it ties directly to your Spotify account. You need an Spotify Premium account for this to work.
+*spoticord* is a discord bot that allows you to play your music directly from spotify to discord. You need to host your own instance of this bot because it ties directly to your Spotify account. You need Spotify Premium for this to work.
 
 ## Disclaimer  
 
@@ -26,12 +26,12 @@ You should not consider this code as production-ready. Sometimes audio behaves r
 - Fill in your details
   - In your spoticord directory, run `npm run configs` to create emtpy config files.
   - Follow the instructions you receive in your terminal
-  - Run `npm run init` to start the Spotify authentification process and follow the instructions you receive in your Terminal
+  - Run `npm run init` to start the Spotify authentification process and follow the instructions you receive in your terminal
 
 ## Usage
 
-Start bot with ```node .```\
-Default command prefix is ```$``` but you can also mention the bot instead of using the prefix.  
+Start the bot with ```node .```\
+The default command prefix is ```$``` but you can also mention the bot instead of using the prefix.  
 ```$help``` will send you an summary of all available commands.
 
 ## Disclaimer
