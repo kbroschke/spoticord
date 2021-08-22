@@ -14,15 +14,16 @@ module.exports = {
 		noRefreshToken: "Refresh token and auth code is missing in config.\n" +
 		"After this text there will be an weblink.\n" +
 		"You need to copy this into a browser and authenticate on the resulting webpage with your Spotify Account.\n" +
-		"You will be redirected to example.com. You need to copy the code after 'code=' in your browser's address bar. (yes, it's veeeery long)\n" +
+		"You will be redirected to example.com. You need to copy the code after 'code=' in your browser's address bar (yes, it's veeeery long). And make sure you don't copy some ending after the auth code like '&state='!\n" +
 		"You need to paste this code in the spotify.json file behind 'AUTH_CODE'.\n" +
 		"Then start the init script again.",
 		authError: "Something went wrong while sending the auth code to Spotify.\n" +
-		"Please make sure to paste the whole code you got in the resulting redirect URL.\n" +
+		"Please make sure to paste the whole code you got in the resulting redirect URL and make sure to leave out additional endings like '&state='.\n" +
 		"If you need a new auth code, just remove the current one from the config file and start the init script again.",
 	},
 	discord: {
 		configNotFound: "The template was saved to ../config/discord.json\n" +
+		"If your need a new template run 'npm run configs'." +
 		"Please fill in your bot token for the Discord API. It's required for the bot to work.\n" +
 		"It can be found at https://discord.com/developers/applications (under Bot > Token).\n",
 		// 'The DISCORD_USER_ID_OF_SPOTIFY_ACCOUNT_OWNER can be left as an empty String if the feature for locking the bot is not needed.\n' +

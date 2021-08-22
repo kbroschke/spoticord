@@ -1,9 +1,9 @@
 console.log("Loading libraries...");
-import { writeFileSync } from "fs";
-import SpotifyWebApi from "spotify-web-api-node";
-import strings from "./strings";
-import discordConfig from "../config/discord.json";
-import spotifyConfig from "../config/spotify.json";
+const fs = require("fs");
+const SpotifyWebApi = require("spotify-web-api-node");
+const strings = require("./strings");
+const discordConfig = require("../config/discord.json");
+const spotifyConfig = require("../config/spotify.json");
 
 // load discord config
 console.log("Checking discord config...");
@@ -12,14 +12,7 @@ if (discordConfig.BOT_TOKEN) {
 	console.log("Discord config complete!");
 }
 else {
-	console.error("Error checking discord config, BOT_TOKEN is empty.\n" +
-		"Generating default template...");
-	const defaultConfig = {
-		"BOT_TOKEN": "",
-		// 'DISCORD_USER_ID_OF_SPOTIFY_ACCOUNT_OWNER': '',
-	};
-	writeFileSync("../config/discord.json",
-		JSON.stringify(defaultConfig, null, 4));
+	console.error("Error checking discord config, BOT_TOKEN is empty.");
 	console.log(strings.discord.configNotFound);
 	process.exit();
 }
@@ -44,9 +37,10 @@ if (spotifyConfig.CLIENT_ID &&
 		spotifyAPI.authorizationCodeGrant(spotifyConfig.AUTH_CODE).then(
 			function(data) {
 				spotifyConfig.REFRESH_TOKEN = data.body["refresh_token"];
-				writeFileSync("../config/spotify.json",
+				fs.writeFileSync("./config/spotify.json",
 					JSON.stringify(spotifyConfig, null, 4));
 				console.log("Successfully updated refresh token!");
+				console.log("Everything's ready, you can now start the bot with 'node .'!");
 			},
 			function(error) {
 				console.error(error);
@@ -70,22 +64,6 @@ if (spotifyConfig.CLIENT_ID &&
 }
 else {
 	console.log("A required parameter is missing. Please check the config file at config/spotify.json.");
-
-	// TODO fix
-	console.error("Error loading spotify config. Generating default template...");
-	const defaultConfig = {
-		"CLIENT_ID": "",
-		"CLIENT_SECRET": "",
-		"REFRESH_TOKEN": "",
-		"AUTH_CODE": "",
-		"USERNAME": "",
-		"PASSWORD": "",
-		"LIBRESPOT_PATH": "",
-	};
-	writeFileSync("../config/spotify.json",
-		JSON.stringify(defaultConfig, null, 4));
 	console.log(strings.spotify.configNotFound);
 	process.exit();
 }
-
-console.log("Everything's ready, you can now start the bot with 'node .'!");
