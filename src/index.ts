@@ -6,6 +6,7 @@ import SpotifyWebApi from "spotify-web-api-node";
 import refreshSpotifyToken from "./refreshSpotifyToken";
 import discordConfig from "../config/discord.json";
 import spotifyConfig from "../config/spotify.json";
+import { ClientCommands } from "ClientCommands";
 const strings = require("strings.js");
 
 // load discord config
@@ -38,8 +39,6 @@ const spotifyAPI = new SpotifyWebApi({
 	clientSecret: spotifyConfig.CLIENT_SECRET,
 	redirectUri: "https://example.com/callback",
 });
-
-type ClientCommands = { commands: Collection<String, any> };
 
 console.log("Initiliazing discord client...");
 const client = new Client() as Client & ClientCommands;
@@ -81,7 +80,8 @@ const librespot = spawn(
 		"--initial-volume", "80",
 		// '--passthrough', // TODO: raw ogg into ogg/opus for discord?
 		"-v",
-	]);
+	],
+	{ stdio: "pipe" });
 
 for (const file of eventFilesLibrespot) {
 	const event = require(`./events/librespot/${file}`);
