@@ -1,53 +1,72 @@
-const Discord = require('discord.js');
-const embed = new Discord.MessageEmbed().setColor('#1DB954');
+import { Message, MessageEmbed } from "discord.js";
+import SpotifyWebApi from "spotify-web-api-node";
+const embed = new MessageEmbed().setColor("#1DB954");
 
 module.exports = {
-	name: 'now',
-	description: 'Shows info about currently playing track.',
-	execute(message, args, spotifyAPI) {
+	name: "now",
+	description: "Shows info about currently playing track.",
+	execute(message: Message, args: string[], spotifyAPI: SpotifyWebApi) {
 		spotifyAPI.getMyCurrentPlayingTrack().then(
 			function(data) {
 				const item = data.body.item;
 				if (item) {
 					const song = item.name;
-					const album = item.album.name;
-					const artists = item.artists;
-					let artistsList = artists[0].name;
-					for (let i = 0; i < artists.length; i++) {
-						if (i > 0) {
-							artistsList += ', ' + artists[i].name;
+
+					let itemContext:
+						SpotifyApi.AlbumObjectSimplified |
+						SpotifyApi.ShowObjectSimplified;
+					let creatorList: string;
+
+					if (item.type === "track") {
+						itemContext = item.album;
+
+						const artists = item.artists;
+						creatorList = artists[0].name;
+						for (let i = 1; i < artists.length; i++) {
+							creatorList += ", " + artists[i].name;
 						}
 					}
-					const coverIMG = item.album.images[0].url;
+					else {
+						itemContext = item.show;
+
+						creatorList = itemContext.publisher;
+					}
+
+					const contextName = itemContext.name;
+
+					const coverIMG = itemContext.images[0].url;
 					const urlSong = item.external_urls.spotify;
 
-					const progress_ms = data.body.progress_ms;
-					const progress = msToMM_SS(progress_ms);
-					const progress_m = progress[0];
-					const progress_s = progress[1];
+					const progressInMS = data.body.progress_ms || 0;
+					const progress = msToMMSS(progressInMS);
+					const progressMin = progress[0];
+					const progressSec = progress[1];
 
-					const total_ms = item.duration_ms;
-					const total = msToMM_SS(total_ms);
-					const total_m = total[0];
-					const total_s = total[1];
+					const totalDurationInMS = item.duration_ms;
+					const total = msToMMSS(totalDurationInMS);
+					const totalMin = total[0];
+					const totalSec = total[1];
 
-					const position = Math.round((10 * progress_ms) / total_ms);
+					const position = Math.round(
+						(10 * progressInMS) / totalDurationInMS);
 
-					let timeBar = '[';
+					let timeBar = "[";
 					for (let i = 1; i < position; i++) {
-						timeBar += '▬';
+						timeBar += "▬";
 					}
-					timeBar += '](https://www.youtube.com/watch?v=dQw4w9WgXcQ):radio_button:';
+					timeBar += "](https://www.youtube.com/watch?v=dQw4w9WgXcQ):radio_button:";
 					for (let i = position + 1; i < 11; i++) {
-						timeBar += '▬';
+						timeBar += "▬";
 					}
 
 					message.channel.send(embed
 						.setTitle(song)
 						.setDescription(
-							`by ${artistsList}\n` +
-                                `from ${album}\n\n` +
-                                `${progress_m}:${progress_s}\u2002${timeBar}\u2002${total_m}:${total_s}`)
+							`by ${creatorList}\n` +
+							`from ${contextName}\n\n` +
+							`${progressMin}:${progressSec}`+
+							`\u2002${timeBar}\u2002`+
+							`${totalMin}:${totalSec}`)
 						.setThumbnail(coverIMG)
 						.setURL(urlSong));
 				}
@@ -55,22 +74,33 @@ module.exports = {
 					sendNothingsPlaying(message);
 				}
 			}, function(error) {
-				console.error('--- ERROR PLAYBACK STATE ---\n', error);
+				console.error("--- ERROR PLAYBACK STATE ---\n", error);
 				sendNothingsPlaying(message);
 			},
 		);
 	},
 };
 
-function msToMM_SS(progress_ms) {
-	let progress_s = Math.floor(progress_ms / 1000);
-	let progress_m = Math.floor(progress_s / 60);
-	progress_s = progress_s % 60;
-	if (progress_m.toString().length < 2) progress_m = '0' + progress_m;
-	if (progress_s.toString().length < 2) progress_s = '0' + progress_s;
-	return [progress_m, progress_s];
+/**
+ * Converts number in milliseconds into respectable pair of minutes and seconds
+ * @param {number} progressMS - number in milliseconds
+ * @return {string[]} Array of minutes and seconds as strings
+ */
+function msToMMSS(progressMS: number) {
+	let progressInS = Math.floor(progressMS / 1000);
+	const progressInM = Math.floor(progressInS / 60);
+	progressInS = progressInS % 60;
+
+	return [
+		progressInM.toString().length < 2 ? "0" + progressInM : progressInM,
+		progressInS.toString().length < 2 ? "0" + progressInS : progressInS,
+	];
 }
 
-function sendNothingsPlaying(message) {
-	message.channel.send(embed.setDescription('Nothing\'s currently playing.'));
+/**
+ * Send message that nothing is currently playing
+ * @param {Message} message - Send response in channel of this message
+ */
+function sendNothingsPlaying(message: Message) {
+	message.channel.send(embed.setDescription("Nothing's currently playing."));
 }
