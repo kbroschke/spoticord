@@ -23,8 +23,8 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "init": "node scripts/init.js",
-    "configs": "node scripts/createConfigs.js"
+    "init": "node build/scripts/init.js",
+    "configs": "node build/scripts/createConfigs.js"
   },
   "author": "",
   "license": "MIT",
