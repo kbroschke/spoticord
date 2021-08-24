@@ -1,30 +1,39 @@
 "use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 module.exports = {
-    name: 'voiceStateUpdate',
+    name: "voiceStateUpdate",
     execute(oldState, newState, client) {
-        if (oldState.channel == null) {
+        if (!client.user) {
+            console.error("Discord client is not logged in!");
             return;
         }
-        else {
-            let channelMembers;
-            if (oldState.id == client.user.id) {
-                if (newState.channel == null) {
-                    return;
-                }
-                else {
-                    channelMembers = newState.channel.members;
-                }
+        let channelMembers;
+        // the bot created this event
+        if (oldState.id == client.user.id) {
+            // the bot left the voice channel
+            if (newState.channel == null) {
+                return;
             }
-            // check oldState because if user leaves then newState.channel is null
+            // the bot joined a voice channel
+            else {
+                channelMembers = newState.channel.members;
+            }
+        }
+        else {
+            // no oldState means the user joined the channel and didn't leave it
+            if (oldState.channel == null) {
+                return;
+            }
             else {
                 channelMembers = oldState.channel.members;
             }
-            // when user leaves oldState does NOT include this user in channel.members
-            // dont know why but it works now
-            if (channelMembers.size == 1 && channelMembers.has(client.user.id)) {
-                channelMembers.get(client.user.id).voice.connection.disconnect();
-                // TODO pause Spotify
-            }
+        }
+        // size must be 1 because:
+        // when user leaves, oldState does NOT include this user in channel.members
+        const clientUser = channelMembers.get(client.user.id);
+        if (clientUser && channelMembers.size === 1) {
+            clientUser.voice.connection?.disconnect();
+            // TODO pause Spotify
         }
     },
 };

@@ -1,5 +1,5 @@
 const fs = require("fs");
-const strings = require("./strings");
+const strings = require("../build/src/strings");
 
 console.log("Creating config folder...");
 // create config dir if not exists
@@ -28,6 +28,7 @@ const defaultConfigSpotify = {
 	"AUTH_CODE": "",
 	"USERNAME": "",
 	"PASSWORD": "",
+	"DEVICE_ID": "",
 };
 fs.writeFileSync("./config/spotify.json",
 	JSON.stringify(defaultConfigSpotify, null, 4));

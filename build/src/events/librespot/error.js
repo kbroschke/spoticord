@@ -1,6 +1,6 @@
 "use strict";
 module.exports = {
-    name: 'error',
+    name: "error",
     execute(error) {
         console.error(error);
     },
