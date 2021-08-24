@@ -1,5 +1,5 @@
 console.log("Loading libraries...");
-import { readdirSync } from "fs";
+import { readdirSync, writeFileSync } from "fs";
 import { spawn } from "child_process";
 import { Client, Collection } from "discord.js";
 import SpotifyWebApi from "spotify-web-api-node";
@@ -54,24 +54,15 @@ for (const file of commandFiles) {
 	client.commands.set(command.name, command);
 }
 
-for (const file of eventFilesDiscord) {
-	const event = require(`./events/discord/${file}`);
-	if (event.once) {
-		client.once(event.name,
-			(...args) => event.execute(...args, client, spotifyAPI));
-	}
-	else {
-		client.on(event.name,
-			(...args) => event.execute(...args, client, spotifyAPI));
-	}
-}
-
 console.log("Initializing librespot...");
+
+// random 4 digit number to identify client in Spotify
+const librespotId = Math.floor(1000 + Math.random() * 9000);
 
 const librespot = spawn(
 	"../lib/librespot",
 	[
-		"-n", "Librespot",
+		"-n", `Spoticord#${librespotId}`,
 		"--device-type", "computer",
 		"-b", "320",
 		"-u", spotifyConfig.USERNAME,
@@ -82,6 +73,18 @@ const librespot = spawn(
 		"-v",
 	],
 	{ stdio: "pipe" });
+
+for (const file of eventFilesDiscord) {
+	const event = require(`./events/discord/${file}`);
+	if (event.once) {
+		client.once(event.name,
+			(...args) => event.execute(...args, client, spotifyAPI, librespot));
+	}
+	else {
+		client.on(event.name,
+			(...args) => event.execute(...args, client, spotifyAPI, librespot));
+	}
+}
 
 for (const file of eventFilesLibrespot) {
 	const event = require(`./events/librespot/${file}`);
@@ -113,4 +116,22 @@ client.login(discordConfig.BOT_TOKEN).then(() => {
 	console.error(error);
 	console.error("Could not connect to Discord! Exiting.");
 	process.exit();
+});
+
+// get device id from Spotify
+spotifyAPI.getMyDevices().then((response) => {
+	const devices = response.body.devices;
+	devices.forEach((element) => {
+		if (element.name === `Spoticord#${librespotId}`) {
+			if (element.id) {
+				const spotifyConfigWithId = spotifyConfig;
+				spotifyConfigWithId.DEVICE_ID = element.id;
+				writeFileSync("../config/spotify.json", JSON.stringify(spotifyConfigWithId, null, 4));
+			}
+			else {
+				console.error("Librespot client was not found, exiting!");
+				process.kill(process.pid, "SIGINT");
+			}
+		}
+	});
 });

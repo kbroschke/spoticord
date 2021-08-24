@@ -1,3 +1,4 @@
+import { ChildProcessWithoutNullStreams } from "child_process";
 import { ClientCommands } from "ClientCommands";
 import { Client, Message } from "discord.js";
 import SpotifyWebApi from "spotify-web-api-node";
@@ -7,7 +8,8 @@ const prefixes = require("../../../config/prefixes.json");
 module.exports = {
 	name: "message",
 	execute(message: Message,
-		client: Client & ClientCommands, spotifyAPI: SpotifyWebApi) {
+		client: Client & ClientCommands, spotifyAPI: SpotifyWebApi,
+		librespot: ChildProcessWithoutNullStreams) {
 		// dont react to other Bots
 		if (message.author.bot) return;
 
@@ -58,7 +60,7 @@ module.exports = {
 		if (!commandModule) return;
 
 		try {
-			commandModule.execute(message, args, spotifyAPI);
+			commandModule.execute(message, args, spotifyAPI, librespot);
 		}
 		catch (error) {
 			console.error(error);

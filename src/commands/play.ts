@@ -1,212 +1,260 @@
-const Discord = require('discord.js');
-const { DEVICE_ID } = require('../../config/spotify.json');
+import { ChildProcessWithoutNullStreams } from "child_process";
+import { Message, MessageEmbed, VoiceConnection } from "discord.js";
+import SpotifyWebApi from "spotify-web-api-node";
 
-const embed = new Discord.MessageEmbed().setColor('#1DB954');
-const embedSearch = new Discord.MessageEmbed().setColor('#1DB954').setTitle('Search results');
+import spotifyConfig from "../../config/spotify.json";
+
+const embed = new MessageEmbed().setColor("#1DB954");
+const embedSearch = new MessageEmbed().setColor("#1DB954").setTitle("Search results");
+
+type searchType = Parameters<SpotifyWebApi["search"]>[1][number]
 
 module.exports = {
-	name: 'play',
-	description: 'Start playback of given track/playlist/album/artist. If no argument is given, current Spotify player gets just unpaused.',
-	execute(message, args, spotifyAPI) {
+	name: "play",
+	description: "Start playback of given track/playlist/album/artist. If no argument is given, current Spotify player gets just unpaused.",
+	execute(message: Message, args: string[], spotifyAPI: SpotifyWebApi,
+		librespot: ChildProcessWithoutNullStreams) {
+		if (!message.member) {return;}
 		if (!message.member.voice.channel) {
-			message.reply('please join a voice channel first!');
+			message.reply("please join a voice channel first!");
 			return;
 		}
 
 		spotifyAPI.getMyCurrentPlaybackState().then(
 			function(data) {
-				if (!args.length) {
-					if (JSON.stringify(data.body) == '{}') {
-						message.channel.send(embed.setDescription('Nothing\'s currently playing. You can start playback by providing a track after the `play` command.'));
+				if (args.length === 0) {
+					if (JSON.stringify(data.body) === "{}") {
+						message.channel.send(embed.setDescription("Nothing's currently playing. You can start playback by providing something to play after the `play` command. To see all options use `help`."));
 					}
-					else if (data.body.device.id == DEVICE_ID) {
-						initializePlayback(message, null, false);
+					else if (data.body.device.id === spotifyConfig.DEVICE_ID) {
+						initializePlayback(message, null, false, spotifyAPI,
+							librespot);
 					}
 					else {
-						initializePlayback(message, null, true);
+						initializePlayback(message, null, true, spotifyAPI,
+							librespot);
 					}
 				}
 				else {
 					switch (args[0]) {
-					case '1':
-					case '2':
-					case '3':
-					case '4':
-					case '5':
+					case "1":
+					case "2":
+					case "3":
+					case "4":
+					case "5":
 						// TODO play results[args[0]];
 						// use TextChannel.awaitMessages();
-						message.channel.send(embed.setDescription('This feature is WIP'));
+						message.channel.send(embed.setDescription("This feature is WIP"));
 						break;
-					case 'track':
-					case 'album':
-					case 'playlist':
-					case 'artist':
+					case "track":
+					case "album":
+					case "playlist":
+					case "artist":
+					case "show":
+					case "episode":
 						if (args.length < 2) {
-							message.channel.send(embed.setDescription(`You need to provide the name of the ${args[0]}!`));
+							message.channel.send(
+								embed.setDescription(
+									"You need to provide the name of the "+
+									`${args[0]}!`));
 						}
 						else {
 							// remove 1st element so rest can be joined as search query
-							const search_type = args.shift();
-							searchSpotify(args.join(' '), [search_type], message);
+							const searchType = args.shift() as searchType;
+							searchSpotify(args.join(" "),
+								[searchType], message, spotifyAPI);
 						}
 						break;
 					default:
-						if (args[0].toString().startsWith('https://open.spotify.com/') || args[0].toString().startsWith('spotify:')) {
+						if (isSpotifyLink(args[0])) {
 							// TODO make spotify URI from URL
 							console.log(data.body);
-							if (JSON.stringify(data.body) == '{}') {
-								initializePlayback(message, args[0], true);
+							if (JSON.stringify(data.body) == "{}") {
+								initializePlayback(message, args[0], true,
+									spotifyAPI, librespot);
 							}
-							else if (data.body.device.id == DEVICE_ID) {
-								initializePlayback(message, args[0], false);
+							else if (data.body.device.id ==
+								spotifyConfig.DEVICE_ID) {
+								initializePlayback(message, args[0], false,
+									spotifyAPI, librespot);
 							}
 							else {
-								initializePlayback(message, args[0], true);
+								initializePlayback(message, args[0], true,
+									spotifyAPI, librespot);
 							}
 						}
 						else {
-							searchSpotify(args.join(' '), ['track', 'album', 'playlist'], message);
+							searchSpotify(args.join(" "), ["track", "album", "playlist"], message, spotifyAPI);
 						}
 						break;
 					}
 				}
 			},
 			function(error) {
-				console.error('Playback state error', error);
+				console.error("Playback state error", error);
 			},
 		);
 	},
 };
 
-function sendSearchUnsuccessful(message) {
-	message.reply('there are no results matching your search request.');
+/**
+ * Reply to a message that there were no search results.
+ * @param {Message} message - Message to reply to
+ */
+function sendSearchUnsuccessful(message: Message) {
+	message.reply("there are no results matching your search request.");
 }
 
-function searchSpotify(query, type, message) {
-	spotifyAPI.search(query, type, { limit : 5 }).then(
+/**
+ * Search Spotify with given query for given type of content
+ * @param {string} query - Search for this query
+ * @param {searchType} type - Search only this type of content
+ * @param {Message} message - Message to reply to with results
+ * @param {SpotifyWebApi} spotifyAPI - SpotifyAPI instance to execute search
+ */
+function searchSpotify(query: string, type: searchType[], message: Message,
+	spotifyAPI: SpotifyWebApi) {
+	spotifyAPI.search(query, type, { limit: 5 }).then(
 		function(data) {
-			// WIP
-			let type_name;
-			if (type.length == 1) {
-				type_name = type[0];
+			let items:
+				SpotifyApi.AlbumObjectSimplified[] |
+				SpotifyApi.ArtistObjectFull[] |
+				SpotifyApi.EpisodeObjectSimplified[] |
+				SpotifyApi.PlaylistObjectSimplified[] |
+				SpotifyApi.ShowObjectSimplified[] |
+				SpotifyApi.TrackObjectFull[] = [];
+
+			if (type.length === 1) {
+				if (data.body.albums) {
+					items = data.body.albums.items;
+				}
+				else if (data.body.artists) {
+					items = data.body.artists.items;
+				}
+				else if (data.body.episodes) {
+					items = data.body.episodes.items;
+				}
+				else if (data.body.playlists) {
+					items = data.body.playlists.items;
+				}
+				else if (data.body.shows) {
+					items = data.body.shows.items;
+				}
+				else if (data.body.tracks) {
+					items = data.body.tracks.items;
+				}
+				sendResults(message, items);
 			}
 			else {
-				type_name = 'all';
-			}
-			switch(type_name) {
-			case 'track': {
-				const items = data.body.tracks.items;
-				sendResults(message, items);
-				break;
-			}
-			case 'album': {
-				const items = data.body.albums.items;
-				sendResults(message, items);
-				break;
-			}
-			case 'playlist': {
-				const items = data.body.playlists.items;
-				sendResults(message, items);
-				break;
-			}
-			case 'artist': {
-				const items = data.body.artists.items;
-				sendResults(message, items);
-				break;
-			}
-			case 'all': {
-				const items = [];
 				// merge all results together
-				let old_item_length = 0;
+				const albumItems: SpotifyApi.AlbumObjectSimplified[] =
+					data.body.albums?.items || [];
+				const playlistItems: SpotifyApi.PlaylistObjectSimplified[] =
+					data.body.playlists?.items || [];
+				const trackItems: SpotifyApi.TrackObjectFull[] =
+					data.body.tracks?.items || [];
 
-				const append_item = (dataitems) => {
-					if (items.length >= 10 && dataitems.length) {
-						items.push(dataitems.shift());
+				const appendItem = (dataitems: typeof items) => {
+					if (items.length >= 10) { // TODO IS THIS RIGHT??
+						const item = dataitems.shift();
+						if (item) {
+							items[items.length] = item;
+						}
 					}
 				};
 
+				let oldItemLength = 0;
 				while (items.length < 10) {
+					oldItemLength = items.length;
 
-					old_item_length = items.length;
+					appendItem(trackItems);
+					appendItem(albumItems);
+					appendItem(playlistItems);
 
-					append_item(data.body.tracks.items);
-					append_item(data.body.albums.items);
-					append_item(data.body.playlists.items);
-
-					if (old_item_length === items.length) break;
+					// break if no new items got added (no more search results)
+					if (oldItemLength === items.length) break;
 				}
 
 				sendResults(message, items);
-				break;
-
-
-			}
 			}
 		},
 		function(error) {
 			console.error(error);
-			message.channel.send('Search did not complete successfully. Please try again later.');
+			message.channel.send("Search did not complete successfully. Please try again later.");
 		},
 	);
 }
 
-function sendResults(message, items) {
-	if (!items.length) {
+/**
+ * Send Spotify search results in a human readable format (list)
+ * @param {Message} message - message to reply to with results
+ * @param {SpotifyApi.AlbumObjectSimplified[] | SpotifyApi.ArtistObjectFull[] | SpotifyApi.EpisodeObjectSimplified[] | SpotifyApi.PlaylistObjectSimplified[] | SpotifyApi.ShowObjectSimplified[] | SpotifyApi.TrackObjectFull[]} items - array of search results to put in message
+ */
+function sendResults(message: Message, items:
+	SpotifyApi.AlbumObjectSimplified[] |
+	SpotifyApi.ArtistObjectFull[] |
+	SpotifyApi.EpisodeObjectSimplified[] |
+	SpotifyApi.PlaylistObjectSimplified[] |
+	SpotifyApi.ShowObjectSimplified[] |
+	SpotifyApi.TrackObjectFull[]) {
+	if (items.length === 0) {
 		sendSearchUnsuccessful(message);
 	}
 	else {
 		// turn spotify search api response into readable list
-		let answer = '';
+		let answer = "";
 
 		items.forEach((element, index) => {
-			let _index;
+			let indexEmote: string;
 			switch (index) {
 			case 0:
-				_index = ':one:';
+				indexEmote = ":one:";
 				break;
 			case 1:
-				_index = ':two:';
+				indexEmote = ":two:";
 				break;
 			case 2:
-				_index = ':three:';
+				indexEmote = ":three:";
 				break;
 			case 3:
-				_index = ':four:';
+				indexEmote = ":four:";
 				break;
 			case 4:
-				_index = ':five:';
+				indexEmote = ":five:";
 				break;
 			case 5:
-				_index = ':six:';
+				indexEmote = ":six:";
 				break;
 			case 6:
-				_index = ':seven:';
+				indexEmote = ":seven:";
 				break;
 			case 7:
-				_index = ':eight:';
+				indexEmote = ":eight:";
 				break;
 			case 8:
-				_index = ':nine:';
+				indexEmote = ":nine:";
 				break;
 			case 9:
-				_index = ':keycap_ten:';
+				indexEmote = ":keycap_ten:";
 				break;
 			default:
-				_index = index + 1;
+				indexEmote = (index + 1).toString();
 				break;
 			}
 
-			answer += `${_index}: ${element.name}`;
+			answer += `${indexEmote}: ${element.name}`;
 
 			switch (element.type) {
-			case 'artist':
+			case "album":
+			case "track":
+				answer += ` by ${element.artists[0].name}`;
+			case "artist":
 				break;
-			case 'playlist':
+			case "playlist":
 				answer += ` by ${element.owner.display_name}`;
 				break;
-			default:
-				answer += ` by ${element.artists[0].name}`;
-				break;
+			case "show":
+				answer += ` by ${element.publisher}`;
 			}
 
 			answer += ` \`${element.type}\`\n`;
@@ -216,152 +264,162 @@ function sendResults(message, items) {
 	}
 }
 
-function initializePlayback(message, link, transfer) {
+/**
+ * Make sure bot is in voice channel before starting playback on spotify
+ * @param {Message} message - message for context
+ * @param {string | null} link - link to play on spotify
+ * @param {boolean} transfer - passthrough if playback needs to be transfered
+ * @param {SpotifyWebApi} spotifyAPI - passthrough spotify API instance
+ * @param {ChildProcessWithoutNullStreams} librespot - passthrough librespot instance
+ */
+function initializePlayback(message: Message, link: string | null,
+	transfer: boolean, spotifyAPI: SpotifyWebApi,
+	librespot: ChildProcessWithoutNullStreams) {
 	// check if already in channel
-	if (message.guild.voice && message.guild.voice.channel) {
-		if (message.guild.voice.channel == message.member.voice.channel) {
-			initSpotify(message, link, transfer, message.guild.voice.connection);
+	if (message.guild?.voice?.connection) {
+		if (message.guild.voice.channelID === message.member?.voice.channelID) {
+			playSpotify(message, link, transfer, message.guild.voice.connection,
+				spotifyAPI, librespot);
 		}
 		else {
-			message.channel.send(embed.setDescription('Please join the bot\'s voice channel first.'));
+			message.channel.send(embed.setDescription("Please join the bot's voice channel first."));
 		}
 	}
 	// if not then join the channel and create connection
+	// we already tested earlier that message.member has a voiceChannel
 	else {
-		message.member.voice.channel.join().then(
-			connection => {
-				initSpotify(message, link, transfer, connection);
+		message.member?.voice?.channel?.join().then(
+			(connection) => {
+				playSpotify(message, link, transfer, connection, spotifyAPI,
+					librespot);
 			},
 		);
 	}
 }
 
-// TODO check device id on startup, then remove this section
-function initSpotify(message, link, transfer, connection) {
-	// if we already have the device ID start playback
-	if (spotify_config.DEVICE_ID) {
-		playSpotify(message, link, transfer, connection);
-	}
-	// if not get Device ID in Spotify Connect
-	else {
-		spotifyAPI.getMyDevices().then(
-			function(data) {
-				// check for device with name 'Librespot'
-				if (data.body.devices) {
-					for (let index = 0; index < data.body.devices.length; index++) {
-						if (data.body.devices[index].name == 'Librespot') {
-							spotify_config.DEVICE_ID = data.body.devices[index].id;
-							fs.writeFile('../config/spotify.json', JSON.stringify(spotify_config, null, 4), error => {
-								if (error) {
-									console.error('Failed writing Spotify Device ID. I\'ll try again next time.');
-									console.error(error);
-								}
-							});
-							playSpotify(message, link, transfer, connection);
-						}
-					}
-				}
-			},
-			function(error) {
-				console.error('--- ERROR WHILE GETTING DEVICES ---\n', error);
-				message.channel.send(embed.setDescription('Playback could not be started. Please try again later.'));
-			},
-		);
-	}
-}
-
-function playSpotify(message, link, transfer, connection) {
+/**
+ * Start playback in Spotify
+ * @param {Message} message - message for context
+ * @param {string | null} link - link of song/episode/... to play in Spotify
+ * @param {boolean} transfer - must playback transfered to Librespot device before starting playback
+ * @param {VoiceConnection} connection - voiceConnection of bot to play audio to Discord
+ * @param {SpotifyWebApi} spotifyAPI - Spotify API instance
+ * @param {ChildProcessWithoutNullStreams} librespot - Librespot client
+ */
+function playSpotify(message: Message, link: string | null, transfer: boolean,
+	connection: VoiceConnection, spotifyAPI: SpotifyWebApi,
+	librespot: ChildProcessWithoutNullStreams) {
 	// start playback on Librespot Device
 
 	// start playing specified URL on Librespot device
 	if (link) {
 		if (transfer) {
-			spotifyAPI.transferMyPlayback([spotify_config.DEVICE_ID]).then(
+			spotifyAPI.transferMyPlayback([spotifyConfig.DEVICE_ID]).then(
 				function() {
 					spotifyAPI.play(
 						{
-							device_id: spotify_config.DEVICE_ID,
+							device_id: spotifyConfig.DEVICE_ID,
 							uris: [link],
 						},
 					).then(
 						function() {
-							play(message, connection);
-							message.react('▶️');
+							play(message, connection, librespot);
+							message.react("▶️");
 						},
 						function(error) {
-							console.error('--- ERROR STARTING SPOTIFY PLAYBACK ---\n', error);
-							message.channel.send(embed.setDescription('Playback could not be started. Please try again later.'));
+							console.error("--- ERROR STARTING SPOTIFY PLAYBACK ---\n", error);
+							message.channel.send(embed.setDescription("Playback could not be started. Please try again later."));
 						},
 					);
 				},
 				function(error) {
-					console.error('--- ERROR STARTING SPOTIFY PLAYBACK ---\n', error);
-					message.channel.send(embed.setDescription('Playback could not be started. Please try again later.'));
+					console.error("--- ERROR STARTING SPOTIFY PLAYBACK ---\n", error);
+					message.channel.send(embed.setDescription("Playback could not be started. Please try again later."));
 				},
 			);
 		}
 		else {
 			spotifyAPI.play(
 				{
-					device_id: spotify_config.DEVICE_ID,
+					device_id: spotifyConfig.DEVICE_ID,
 					uris: [link],
 				},
 			).then(
 				function() {
-					play(message, connection);
-					message.react('▶️');
+					play(message, connection, librespot);
+					message.react("▶️");
 				},
 				function(error) {
-					console.error('--- ERROR STARTING SPOTIFY PLAYBACK ---\n', error);
-					message.channel.send(embed.setDescription('Playback could not be started. Please try again later.'));
+					console.error("--- ERROR STARTING SPOTIFY PLAYBACK ---\n", error);
+					message.channel.send(embed.setDescription("Playback could not be started. Please try again later."));
 				},
 			);
 		}
 	}
 	// else just start playback
 	else if (transfer) {
-		spotifyAPI.transferMyPlayback([spotify_config.DEVICE_ID], { play: true }).then(
+		spotifyAPI.transferMyPlayback([spotifyConfig.DEVICE_ID],
+			{ play: true }).then(
 			function() {
-				play(message, connection);
-				message.react('▶️');
+				play(message, connection, librespot);
+				message.react("▶️");
 			},
 			function(error) {
-				console.error('--- ERROR STARTING SPOTIFY PLAYBACK ---\n', error);
-				message.channel.send(embed.setDescription('Playback could not be started. Please try again later.'));
+				console.error("--- ERROR STARTING SPOTIFY PLAYBACK ---\n", error);
+				message.channel.send(embed.setDescription("Playback could not be started. Please try again later."));
 			},
 		);
 	}
 	else {
 		spotifyAPI.play(
 			{
-				device_id: spotify_config.DEVICE_ID,
+				device_id: spotifyConfig.DEVICE_ID,
 			},
 		).then(
 			function() {
-				play(message, connection);
-				message.react('▶️');
+				play(message, connection, librespot);
+				message.react("▶️");
 			},
 			function(error) {
-				console.error('--- ERROR STARTING SPOTIFY PLAYBACK ---\n', error);
-				message.channel.send(embed.setDescription('Playback could not be started. Please try again later.'));
+				console.error("--- ERROR STARTING SPOTIFY PLAYBACK ---\n", error);
+				message.channel.send(embed.setDescription("Playback could not be started. Please try again later."));
 			},
 		);
 	}
 }
 
-function play(message, connection) {
+/**
+ * Connect Audio from spotify output to discord connection
+ * @param {Message} message - message for context
+ * @param {VoiceConnection} connection - voiceConnction to play audio
+ * @param {ChildProcessWithoutNullStreams} librespot - librespot instance to get audio
+ */
+function play(message: Message, connection: VoiceConnection,
+	librespot: ChildProcessWithoutNullStreams) {
 	// TODO check if dispatcher is already playing, handle accordingly
-	const dispatcher = connection.play(librespot.stdout, { type: 'converted', highWaterMark: 24 });
+	const dispatcher = connection.play(librespot.stdout, { type: "converted", highWaterMark: 24 });
 
-	dispatcher.on('start', () => {
-		console.log('Stream started');
+	dispatcher.on("start", () => {
+		console.log("Stream started");
 	});
 
-	dispatcher.on('error', error => {
-		console.error('Dispatcher error\n', error);
+	dispatcher.on("error", (error) => {
+		console.error("Dispatcher error\n", error);
 	});
 
-	dispatcher.on('finish', () => {
-		console.log('Stream finished.');
+	dispatcher.on("finish", () => {
+		console.log("Stream finished.");
 	});
+}
+
+/**
+ * Determines wether a given link is a valid Spotify link
+ * @param {string} link - link to test
+ * @return {boolean} true if link is valid Spotify link
+ */
+function isSpotifyLink(link: string): boolean {
+	if (link.startsWith("https://open.spotify.com/") || link.startsWith("spotify:")) {
+		return true;
+	}
+	return false;
 }
