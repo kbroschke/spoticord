@@ -1,4 +1,4 @@
-module.exports = {
+export = {
 	name: "strings",
 	spotify: {
 		configNotFound: "The template was saved to ../config/spotify.json\n" +

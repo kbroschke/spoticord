@@ -7,7 +7,7 @@ import refreshSpotifyToken from "./refreshSpotifyToken";
 import discordConfig from "../config/discord.json";
 import spotifyConfig from "../config/spotify.json";
 import { ClientCommands } from "ClientCommands";
-const strings = require("strings.js");
+import strings from "strings.js";
 
 // load discord config
 console.log("Checking discord config...");
