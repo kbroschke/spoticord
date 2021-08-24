@@ -1,9 +1,9 @@
 console.log("Loading libraries...");
-const fs = require("fs");
-const SpotifyWebApi = require("spotify-web-api-node");
-const strings = require("../build/src/strings");
-const discordConfig = require("../config/discord.json");
-const spotifyConfig = require("../config/spotify.json");
+import fs from "fs";
+import SpotifyWebApi from "spotify-web-api-node";
+import strings from "../src/strings";
+import discordConfig from "../config/discord.json";
+import spotifyConfig from "../config/spotify.json";
 
 // load discord config
 console.log("Checking discord config...");

@@ -1,5 +1,5 @@
-const fs = require("fs");
-const strings = require("../build/src/strings");
+import fs from "fs";
+import strings from "../src/strings";
 
 console.log("Creating config folder...");
 // create config dir if not exists
