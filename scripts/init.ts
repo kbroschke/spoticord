@@ -37,7 +37,7 @@ if (spotifyConfig.CLIENT_ID &&
 		spotifyAPI.authorizationCodeGrant(spotifyConfig.AUTH_CODE).then(
 			function(data) {
 				spotifyConfig.REFRESH_TOKEN = data.body["refresh_token"];
-				fs.writeFileSync("./config/spotify.json",
+				fs.writeFileSync("./build/config/spotify.json",
 					JSON.stringify(spotifyConfig, null, 4));
 				console.log("Successfully updated refresh token!");
 				console.log("Everything's ready, you can now start the bot with 'node .'!");

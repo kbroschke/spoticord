@@ -7,7 +7,7 @@ import refreshSpotifyToken from "./refreshSpotifyToken";
 import discordConfig from "../config/discord.json";
 import spotifyConfig from "../config/spotify.json";
 import { ClientCommands } from "ClientCommands";
-import strings from "strings.js";
+import strings from "./strings.js";
 
 // load discord config
 console.log("Checking discord config...");
@@ -44,10 +44,10 @@ console.log("Initiliazing discord client...");
 const client = new Client() as Client & ClientCommands;
 client.commands = new Collection();
 
-const commandFiles = readdirSync("./commands").filter((file) => file.endsWith(".js"));
-const eventFilesDiscord = readdirSync("./events/discord").filter((file) => file.endsWith(".js"));
-const eventFilesLibrespot = readdirSync("./events/librespot").filter((file) => file.endsWith(".js"));
-const eventFilesProcess = readdirSync("./events/process").filter((file) => file.endsWith(".js"));
+const commandFiles = readdirSync("./build/src/commands").filter((file) => file.endsWith(".js"));
+const eventFilesDiscord = readdirSync("./build/src/events/discord").filter((file) => file.endsWith(".js"));
+const eventFilesLibrespot = readdirSync("./build/src/events/librespot").filter((file) => file.endsWith(".js"));
+const eventFilesProcess = readdirSync("./build/src/events/process").filter((file) => file.endsWith(".js"));
 
 for (const file of commandFiles) {
 	const command = require(`./commands/${file}`);
@@ -60,7 +60,7 @@ console.log("Initializing librespot...");
 const librespotId = Math.floor(1000 + Math.random() * 9000);
 
 const librespot = spawn(
-	"../lib/librespot",
+	"./lib/librespot",
 	[
 		"-n", `Spoticord#${librespotId}`,
 		"--device-type", "computer",
@@ -108,30 +108,36 @@ librespot.stderr.pipe(process.stdout);
 // setInterval: refresh the access_token every ~50min
 setInterval(() => refreshSpotifyToken.execute(spotifyAPI), 3000000);
 // call it for first time, so we have access right away and not in 50 min...
-refreshSpotifyToken.execute(spotifyAPI);
+refreshSpotifyToken.execute(spotifyAPI).then(
+	function() {
+		// get device id from Spotify
+		console.log("Getting device_id from Spotify...");
+		spotifyAPI.getMyDevices().then((response) => {
+			const devices = response.body.devices;
+			devices.forEach((element) => {
+				if (element.name === `Spoticord#${librespotId}`) {
+					if (element.id) {
+						const spotifyConfigWithId = spotifyConfig;
+						spotifyConfigWithId.DEVICE_ID = element.id;
+						writeFileSync("../config/spotify.json", JSON.stringify(spotifyConfigWithId, null, 4));
+					}
+					else {
+						console.error("Librespot client was not found, exiting!");
+						process.kill(process.pid, "SIGINT");
+					}
+				}
+			});
+		});
+	},
+	function(error) {
+		// setTimeout(() => refreshSpotifyToken.execute(spotifyAPI));
+	},
+);
 
 client.login(discordConfig.BOT_TOKEN).then(() => {
 	console.log("Discord login complete.");
 }).catch((error) => {
 	console.error(error);
 	console.error("Could not connect to Discord! Exiting.");
-	process.exit();
-});
-
-// get device id from Spotify
-spotifyAPI.getMyDevices().then((response) => {
-	const devices = response.body.devices;
-	devices.forEach((element) => {
-		if (element.name === `Spoticord#${librespotId}`) {
-			if (element.id) {
-				const spotifyConfigWithId = spotifyConfig;
-				spotifyConfigWithId.DEVICE_ID = element.id;
-				writeFileSync("../config/spotify.json", JSON.stringify(spotifyConfigWithId, null, 4));
-			}
-			else {
-				console.error("Librespot client was not found, exiting!");
-				process.kill(process.pid, "SIGINT");
-			}
-		}
-	});
+	process.kill(process.pid, "SIGINT");
 });
