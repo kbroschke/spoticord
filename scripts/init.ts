@@ -58,7 +58,7 @@ if (spotifyConfig.CLIENT_ID &&
 			"user-modify-playback-state",
 			"user-read-currently-playing",
 		];
-		console.log(spotifyAPI.createAuthorizeURL(scopes, ""));
+		console.log(spotifyAPI.createAuthorizeURL(scopes, "DO NOT COPY THIS PART"));
 		process.exit();
 	}
 }

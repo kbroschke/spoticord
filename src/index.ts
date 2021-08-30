@@ -70,9 +70,13 @@ const librespot = spawn(
 		"--backend", "pipe",
 		"--initial-volume", "80",
 		// '--passthrough', // TODO: raw ogg into ogg/opus for discord?
+		"--format", "S16",
 		// "-v", // verbose debug logs
 	],
 	{ stdio: "pipe" });
+
+// Experiment success: size of 1 chunk is 4096 Bytes
+// librespot.stdout.on("data", (chunk) => { });
 
 for (const file of eventFilesDiscord) {
 	const event = require(`./events/discord/${file}`);
@@ -99,9 +103,6 @@ for (const file of eventFilesProcess) {
 }
 
 librespot.stderr.pipe(process.stdout);
-
-// librespot.stdout.on('data', () => {});
-// Experiment success: size of 1 chunk is 4096 Bytes
 
 // every spotify access_token is valid for 3600 sec (60min)
 // setInterval: refresh the access_token every ~50min
@@ -133,6 +134,7 @@ function handleRefreshedSpotifyToken() {
 								const spotifyConfigWithId = spotifyConfig;
 								spotifyConfigWithId.DEVICE_ID = element.id;
 								writeFileSync("./build/config/spotify.json", JSON.stringify(spotifyConfigWithId, null, 4));
+								console.log("Saved device id from Spotify!");
 								deviceNotFound = false;
 							}
 						}

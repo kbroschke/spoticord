@@ -8,7 +8,8 @@ module.exports = {
 		}
 		else {
 			console.error(`--- LIBRESPOT EXITED WITH ERROR CODE ${code} ---\n` +
-			"If you want to stop the bot press CTRL-Z!");
+			"Bot will shut down immediatly!");
+			process.exit(1);
 		}
 	},
 };
