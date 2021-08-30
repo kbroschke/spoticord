@@ -7,8 +7,8 @@ const fs_1 = __importDefault(require("fs"));
 const strings_1 = __importDefault(require("../src/strings"));
 console.log("Creating config folder...");
 // create config dir if not exists
-if (!fs_1.default.existsSync("./config")) {
-    fs_1.default.mkdirSync("./config");
+if (!fs_1.default.existsSync("./build/config")) {
+    fs_1.default.mkdirSync("./build/config");
 }
 // save empty discord config
 console.log("Creating empty discord config file...");
@@ -16,7 +16,7 @@ const defaultConfigDiscord = {
     "BOT_TOKEN": "",
     // 'DISCORD_USER_ID_OF_SPOTIFY_ACCOUNT_OWNER': '',
 };
-fs_1.default.writeFileSync("./config/discord.json", JSON.stringify(defaultConfigDiscord, null, 4));
+fs_1.default.writeFileSync("./build/config/discord.json", JSON.stringify(defaultConfigDiscord, null, 4));
 console.log(strings_1.default.discord.configNotFound);
 // save empty spotify config
 console.log("Creating empty spotify config file...");
@@ -29,9 +29,9 @@ const defaultConfigSpotify = {
     "PASSWORD": "",
     "DEVICE_ID": "",
 };
-fs_1.default.writeFileSync("./config/spotify.json", JSON.stringify(defaultConfigSpotify, null, 4));
+fs_1.default.writeFileSync("./build/config/spotify.json", JSON.stringify(defaultConfigSpotify, null, 4));
 console.log(strings_1.default.spotify.configNotFound);
 // make sure proper prefix-file exists
-if (!fs_1.default.existsSync("./config/prefixes.json")) {
-    fs_1.default.writeFileSync("./config/prefixes.json", "{}");
+if (!fs_1.default.existsSync("./build/config/prefixes.json")) {
+    fs_1.default.writeFileSync("./build/config/prefixes.json", "{}");
 }

@@ -37,7 +37,7 @@ if (spotify_json_1.default.CLIENT_ID &&
     else if (spotify_json_1.default.AUTH_CODE) {
         spotifyAPI.authorizationCodeGrant(spotify_json_1.default.AUTH_CODE).then(function (data) {
             spotify_json_1.default.REFRESH_TOKEN = data.body["refresh_token"];
-            fs_1.default.writeFileSync("./config/spotify.json", JSON.stringify(spotify_json_1.default, null, 4));
+            fs_1.default.writeFileSync("./build/config/spotify.json", JSON.stringify(spotify_json_1.default, null, 4));
             console.log("Successfully updated refresh token!");
             console.log("Everything's ready, you can now start the bot with 'node .'!");
         }, function (error) {

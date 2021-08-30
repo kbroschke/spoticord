@@ -8,7 +8,7 @@ const querystring_1 = __importDefault(require("querystring"));
 const spotify_json_1 = __importDefault(require("../config/spotify.json"));
 exports.default = {
     name: "refreshSpotifyToken",
-    execute: (spotifyAPI) => {
+    execute: async () => {
         console.log("Refreshing Spotify's Access Token...");
         const data = querystring_1.default.stringify({
             "grant_type": "refresh_token",
@@ -26,33 +26,32 @@ exports.default = {
                 "Authorization": auth,
             },
         };
-        const req = https_1.default.request(options, (res) => {
-            let response = "";
-            res.on("data", (chunk) => {
-                response += chunk;
+        return new Promise((resolve, reject) => {
+            const req = https_1.default.request(options, (res) => {
+                let response = "";
+                res.on("data", (chunk) => {
+                    response += chunk;
+                });
+                res.on("end", () => {
+                    if (res.statusCode === 200) {
+                        resolve(JSON.parse(response).access_token);
+                    }
+                    else {
+                        console.error("--- SPOTIFY API RESPONSE ERROR ---\n", `HTTPS status code: ${res.statusCode}\n`, "Response body:\n" + response);
+                        reject(res);
+                    }
+                });
+                res.on("error", (error) => {
+                    console.error(error);
+                    reject(error);
+                });
             });
-            res.on("end", () => {
-                if (res.statusCode == 200) {
-                    spotifyAPI.setAccessToken(JSON.parse(response).access_token);
-                    console.log("Successfully updated Spotify Access Token!");
-                    spotifyAPI.getMe().then(function (spotifyApiData) {
-                        console.log("Authenticated with Spotify Api as:", spotifyApiData.body.email);
-                    }, function (error) {
-                        console.error("--- ERROR INITIALIZING SPOTIFY WEB API ---\n", error);
-                    });
-                }
-                else {
-                    console.error("--- SPOTIFY API RESPONSE ERROR ---\n", `HTTPS status code: ${res.statusCode}\n`, "Response body:\n" + response);
-                }
+            req.on("error", (error) => {
+                console.error("--- HTTPS ERROR ---\n" + error);
+                reject(error);
             });
-            res.on("error", (error) => {
-                console.error(error);
-            });
+            req.write(data);
+            req.end();
         });
-        req.on("error", (error) => {
-            console.error("--- HTTPS ERROR ---\n" + error);
-        });
-        req.write(data);
-        req.end();
     },
 };

@@ -2,7 +2,7 @@
 module.exports = {
     name: "strings",
     spotify: {
-        configNotFound: "The template was saved to ../config/spotify.json\n" +
+        configNotFound: "The template was saved to build/config/spotify.json\n" +
             "Please read the following instructions carefully.\n\n" +
             "Please fill in everything except the refresh token and auth code for now.\n" +
             "Your Client ID & Secret can be found at https://developer.spotify.com/dashboard/applications.\n" +
@@ -24,7 +24,7 @@ module.exports = {
         configNotFoundRunning: "A required field in Spotify config is missing. Please check the installation instructions.",
     },
     discord: {
-        configNotFound: "The template was saved to ../config/discord.json\n" +
+        configNotFound: "The template was saved to build/config/discord.json\n" +
             "If your need a new template run 'npm run configs'." +
             "Please fill in your bot token for the Discord API. It's required for the bot to work.\n" +
             "It can be found at https://discord.com/developers/applications (under Bot > Token).\n",
