@@ -1,11 +1,10 @@
 import https from "https";
 import querystring from "querystring";
-import SpotifyWebApi from "spotify-web-api-node";
 import spotifyConfig from "../config/spotify.json";
 
 export default {
 	name: "refreshSpotifyToken",
-	execute: (spotifyAPI: SpotifyWebApi) => {
+	execute: async (): Promise<string> => {
 		console.log("Refreshing Spotify's Access Token...");
 		const data = querystring.stringify({
 			"grant_type": "refresh_token",
@@ -24,45 +23,40 @@ export default {
 			},
 		};
 
-		const req = https.request(options, (res) => {
-			let response = "";
+		return new Promise((resolve, reject) => {
+			const req = https.request(options, (res) => {
+				let response = "";
 
-			res.on("data", (chunk) => {
-				response += chunk;
+				res.on("data", (chunk) => {
+					response += chunk;
+				});
+
+				res.on("end", () => {
+					if (res.statusCode === 200) {
+						resolve(JSON.parse(response).access_token);
+					}
+					else {
+						console.error(
+							"--- SPOTIFY API RESPONSE ERROR ---\n",
+							`HTTPS status code: ${res.statusCode}\n`,
+							"Response body:\n" + response);
+						reject(res);
+					}
+				});
+
+				res.on("error", (error) => {
+					console.error(error);
+					reject(error);
+				});
 			});
 
-			res.on("end", () => {
-				if (res.statusCode == 200) {
-					spotifyAPI.setAccessToken(
-						JSON.parse(response).access_token);
-					console.log("Successfully updated Spotify Access Token!");
-					spotifyAPI.getMe().then(
-						function(spotifyApiData) {
-							console.log("Authenticated with Spotify Api as:", spotifyApiData.body.email);
-						},
-						function(error) {
-							console.error("--- ERROR INITIALIZING SPOTIFY WEB API ---\n", error);
-						},
-					);
-				}
-				else {
-					console.error(
-						"--- SPOTIFY API RESPONSE ERROR ---\n",
-						`HTTPS status code: ${res.statusCode}\n`,
-						"Response body:\n" + response);
-				}
+			req.on("error", (error) => {
+				console.error("--- HTTPS ERROR ---\n" + error);
+				reject(error);
 			});
 
-			res.on("error", (error) => {
-				console.error(error);
-			});
+			req.write(data);
+			req.end();
 		});
-
-		req.on("error", (error) => {
-			console.error("--- HTTPS ERROR ---\n" + error);
-		});
-
-		req.write(data);
-		req.end();
 	},
 };

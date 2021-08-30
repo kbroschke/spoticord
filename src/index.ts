@@ -70,7 +70,7 @@ const librespot = spawn(
 		"--backend", "pipe",
 		"--initial-volume", "80",
 		// '--passthrough', // TODO: raw ogg into ogg/opus for discord?
-		"-v",
+		// "-v", // verbose debug logs
 	],
 	{ stdio: "pipe" });
 
@@ -99,40 +99,68 @@ for (const file of eventFilesProcess) {
 }
 
 librespot.stderr.pipe(process.stdout);
-// TODO fetch device_id when lirebspot has started on every startup
 
 // librespot.stdout.on('data', () => {});
 // Experiment success: size of 1 chunk is 4096 Bytes
 
 // every spotify access_token is valid for 3600 sec (60min)
 // setInterval: refresh the access_token every ~50min
-setInterval(() => refreshSpotifyToken.execute(spotifyAPI), 3000000);
+setInterval(handleRefreshedSpotifyToken, 3000000);
 // call it for first time, so we have access right away and not in 50 min...
-refreshSpotifyToken.execute(spotifyAPI).then(
-	function() {
-		// get device id from Spotify
-		console.log("Getting device_id from Spotify...");
-		spotifyAPI.getMyDevices().then((response) => {
-			const devices = response.body.devices;
-			devices.forEach((element) => {
-				if (element.name === `Spoticord#${librespotId}`) {
-					if (element.id) {
-						const spotifyConfigWithId = spotifyConfig;
-						spotifyConfigWithId.DEVICE_ID = element.id;
-						writeFileSync("../config/spotify.json", JSON.stringify(spotifyConfigWithId, null, 4));
+handleRefreshedSpotifyToken();
+
+/**
+ * wrapper for async handling of refreshed Spotify access token
+ */
+function handleRefreshedSpotifyToken() {
+	refreshSpotifyToken.execute().then(
+		(accessToken) => {
+			spotifyAPI.setAccessToken(accessToken);
+			console.log("Successfully updated Spotify Access Token!");
+
+			// check if accessToken is valid
+			spotifyAPI.getMe().then((response) => {
+				console.log("Authenticated with Spotify API as:", response.body.email);
+
+				// get device id from Spotify
+				console.log("Getting device_id from Spotify...");
+				spotifyAPI.getMyDevices().then((response) => {
+					const devices = response.body.devices;
+					let deviceNotFound = true;
+					devices.forEach((element) => {
+						if (element.name === `Spoticord#${librespotId}`) {
+							if (element.id) {
+								const spotifyConfigWithId = spotifyConfig;
+								spotifyConfigWithId.DEVICE_ID = element.id;
+								writeFileSync("./build/config/spotify.json", JSON.stringify(spotifyConfigWithId, null, 4));
+								deviceNotFound = false;
+							}
+						}
+					});
+					if (deviceNotFound) {
+						// try again in 5 sec
+						console.log("Did not find Librespot device in Spotify. Trying again in 5 sec.");
+						setTimeout(handleRefreshedSpotifyToken, 5000);
+
+						// make not constant 5 sec but fibonacci numbers until too much then call
+						// console.error("Librespot client was not found, exiting!"); and
+						// process.kill(process.pid, "SIGINT"););
 					}
-					else {
-						console.error("Librespot client was not found, exiting!");
-						process.kill(process.pid, "SIGINT");
-					}
-				}
+				},
+				(error) => {
+					console.error("--- COULD NOT GET SPOTIFY DEVICE INFO ---\n", error);
+				});
+			},
+			(error) => {
+				console.error("--- COULD NOT GET SPOTIFY AUTH INFO ---\n", error);
 			});
-		});
-	},
-	function(error) {
-		// setTimeout(() => refreshSpotifyToken.execute(spotifyAPI));
-	},
-);
+		},
+		() => {
+			// try again after 5 Minutes
+			setTimeout(handleRefreshedSpotifyToken, 300000);
+		},
+	);
+}
 
 client.login(discordConfig.BOT_TOKEN).then(() => {
 	console.log("Discord login complete.");
