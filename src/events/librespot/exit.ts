@@ -3,7 +3,7 @@ module.exports = {
 	execute(code: number) {
 		console.log(`Librespot exited with code ${code}!`);
 		if (code === 0) {
-			console.log("Stopping bot... Bye!");
+			console.log("Bye!");
 			process.exit(0);
 		}
 		else {

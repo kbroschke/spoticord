@@ -14,6 +14,13 @@ module.exports = {
 			librespot.kill("SIGINT");
 
 			// don't exit the process here, if shut down gracefully librespot.on('exit') listener will call process.exit()
+
+			// kill everything after 15 seconds
+			setTimeout(() => {
+				console.error("Librespot is not responding, exiting!");
+				librespot.kill();
+				process.exit(1);
+			}, 15000);
 		}
 		else {
 			// something went wrong with the librespot child process
