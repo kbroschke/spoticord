@@ -278,7 +278,7 @@ function initializePlayback(message: Message, link: string | null,
 	if (message.guild?.voice?.connection) {
 		if (message.guild.voice.channelID === message.member?.voice.channelID) {
 			playSpotify(message, link, transfer, message.guild.voice.connection,
-				spotifyAPI, opusStream);
+				true, spotifyAPI, opusStream);
 		}
 		else {
 			message.channel.send(embed.setDescription("Please join the bot's voice channel first."));
@@ -289,8 +289,8 @@ function initializePlayback(message: Message, link: string | null,
 	else {
 		message.member?.voice?.channel?.join().then(
 			(connection) => {
-				playSpotify(message, link, transfer, connection, spotifyAPI,
-					opusStream);
+				playSpotify(message, link, transfer, connection, false,
+					spotifyAPI, opusStream);
 			},
 		);
 	}
@@ -302,58 +302,30 @@ function initializePlayback(message: Message, link: string | null,
  * @param {string | null} link - link of song/episode/... to play in Spotify
  * @param {boolean} transfer - must playback transfered to Librespot device before starting playback
  * @param {VoiceConnection} connection - voiceConnection of bot to play audio to Discord
+ * @param {boolean} alreadyConnected - if true, we don't need a new dispatcher because audio stream is already connected
  * @param {SpotifyWebApi} spotifyAPI - Spotify API instance
  * @param {opus.Encoder} opusStream - opus stream
  */
 function playSpotify(message: Message, link: string | null, transfer: boolean,
-	connection: VoiceConnection, spotifyAPI: SpotifyWebApi,
-	opusStream: opus.Encoder) {
-	// start playback on Librespot Device
-
-	// start playing specified URL on Librespot device
+	connection: VoiceConnection, alreadyConnected: boolean,
+	spotifyAPI: SpotifyWebApi, opusStream: opus.Encoder) {
+	// start playing specified URL on librespot device
 	if (link) {
-		if (transfer) {
-			spotifyAPI.transferMyPlayback([DEVICE_ID]).then(
-				function() {
-					spotifyAPI.play(
-						{
-							device_id: DEVICE_ID,
-							uris: [link],
-						},
-					).then(
-						function() {
-							play(message, connection, opusStream);
-							message.react("▶️");
-						},
-						function(error) {
-							console.error("--- ERROR STARTING SPOTIFY PLAYBACK ---\n", error);
-							message.channel.send(embed.setDescription("Playback could not be started. Please try again later."));
-						},
-					);
-				},
-				function(error) {
-					console.error("--- ERROR STARTING SPOTIFY PLAYBACK ---\n", error);
-					message.channel.send(embed.setDescription("Playback could not be started. Please try again later."));
-				},
-			);
-		}
-		else {
-			spotifyAPI.play(
-				{
-					device_id: DEVICE_ID,
-					uris: [link],
-				},
-			).then(
-				function() {
-					play(message, connection, opusStream);
-					message.react("▶️");
-				},
-				function(error) {
-					console.error("--- ERROR STARTING SPOTIFY PLAYBACK ---\n", error);
-					message.channel.send(embed.setDescription("Playback could not be started. Please try again later."));
-				},
-			);
-		}
+		spotifyAPI.play(
+			{
+				device_id: DEVICE_ID,
+				uris: [link],
+			},
+		).then(
+			function() {
+				play(message, connection, opusStream);
+				message.react("▶️");
+			},
+			function(error) {
+				console.error("--- ERROR STARTING SPOTIFY PLAYBACK ---\n", error);
+				message.channel.send(embed.setDescription("Playback could not be started. Please try again later."));
+			},
+		);
 	}
 	// else just start playback
 	else if (transfer) {
@@ -376,7 +348,9 @@ function playSpotify(message: Message, link: string | null, transfer: boolean,
 			},
 		).then(
 			function() {
-				play(message, connection, opusStream);
+				if (!alreadyConnected) {
+					play(message, connection, opusStream);
+				}
 				message.react("▶️");
 			},
 			function(error) {
@@ -395,7 +369,7 @@ function playSpotify(message: Message, link: string | null, transfer: boolean,
  */
 function play(message: Message, connection: VoiceConnection,
 	opusStream: opus.Encoder) {
-	const dispatcher = connection.play(opusStream, { type: "opus" });
+	const dispatcher = connection.play(opusStream, { type: "opus", highWaterMark: 3 });
 
 	// TODO check if dispatcher is already playing, handle accordingly
 
