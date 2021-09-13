@@ -107,7 +107,9 @@ dist
 --- template end ---
 
 # ESLint config
-.eslintrc.json
+# .eslintrc.json
 
 # config files with bot tokens
 config/
+build/config
+lib/librespot
