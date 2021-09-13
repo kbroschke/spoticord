@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const discord_js_1 = require("discord.js");
+const spotify_json_1 = require("../../config/spotify.json");
 const embed = new discord_js_1.MessageEmbed().setColor("#1DB954");
 module.exports = {
     name: "repeat",
@@ -14,7 +15,7 @@ module.exports = {
             message.channel.send(embed.setDescription("Possible arguments: `track`, `context` or `off`."));
             return;
         }
-        spotifyAPI.setRepeat(args[0]).then(function () {
+        spotifyAPI.setRepeat(args[0], { "device_id": spotify_json_1.DEVICE_ID }).then(function () {
             message.react("👌");
         }, function (error) {
             if (error.toString().includes("NO_ACTIVE_DEVICE")) {

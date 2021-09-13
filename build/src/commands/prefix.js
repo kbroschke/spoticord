@@ -13,7 +13,7 @@ module.exports = {
         }
         let prefixes;
         try {
-            prefixes = JSON.parse(fs_1.readFileSync("../../config/prefixes.json").toString());
+            prefixes = JSON.parse((0, fs_1.readFileSync)("../../config/prefixes.json").toString());
         }
         catch (error) {
             console.error(error);
@@ -37,7 +37,7 @@ module.exports = {
         prefix = args.join(" ");
         prefixes[message.guild.id] = prefix;
         try {
-            fs_1.writeFileSync("../../config/prefixes.json", JSON.stringify(prefixes, null, 4));
+            (0, fs_1.writeFileSync)("../../config/prefixes.json", JSON.stringify(prefixes, null, 4));
         }
         catch (error) {
             console.error("--- FS WRITE ERROR ---", error);

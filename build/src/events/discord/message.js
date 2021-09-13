@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const prefixes = require("../../../config/prefixes.json");
 module.exports = {
     name: "message",
-    execute(message, client, spotifyAPI, librespot) {
+    execute(message, client, spotifyAPI, opusStream) {
         // dont react to other Bots
         if (message.author.bot)
             return;
@@ -49,7 +49,7 @@ module.exports = {
         if (!commandModule)
             return;
         try {
-            commandModule.execute(message, args, spotifyAPI, librespot);
+            commandModule.execute(message, args, spotifyAPI, opusStream);
         }
         catch (error) {
             console.error(error);

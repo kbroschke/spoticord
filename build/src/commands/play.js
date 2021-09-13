@@ -1,16 +1,13 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const discord_js_1 = require("discord.js");
-const spotify_json_1 = __importDefault(require("../../config/spotify.json"));
+const spotify_json_1 = require("../../config/spotify.json");
 const embed = new discord_js_1.MessageEmbed().setColor("#1DB954");
 const embedSearch = new discord_js_1.MessageEmbed().setColor("#1DB954").setTitle("Search results");
 module.exports = {
     name: "play",
     description: "Start playback of given track/playlist/album/artist. If no argument is given, current Spotify player gets just unpaused.",
-    execute(message, args, spotifyAPI, librespot) {
+    execute(message, args, spotifyAPI, opusStream) {
         if (!message.member) {
             return;
         }
@@ -23,11 +20,11 @@ module.exports = {
                 if (JSON.stringify(data.body) === "{}") {
                     message.channel.send(embed.setDescription("Nothing's currently playing. You can start playback by providing something to play after the `play` command. To see all options use `help`."));
                 }
-                else if (data.body.device.id === spotify_json_1.default.DEVICE_ID) {
-                    initializePlayback(message, null, false, spotifyAPI, librespot);
+                else if (data.body.device.id === spotify_json_1.DEVICE_ID) {
+                    initializePlayback(message, null, false, spotifyAPI, opusStream);
                 }
                 else {
-                    initializePlayback(message, null, true, spotifyAPI, librespot);
+                    initializePlayback(message, null, true, spotifyAPI, opusStream);
                 }
             }
             else {
@@ -62,14 +59,14 @@ module.exports = {
                             // TODO make spotify URI from URL
                             console.log(data.body);
                             if (JSON.stringify(data.body) == "{}") {
-                                initializePlayback(message, args[0], true, spotifyAPI, librespot);
+                                initializePlayback(message, args[0], true, spotifyAPI, opusStream);
                             }
                             else if (data.body.device.id ==
-                                spotify_json_1.default.DEVICE_ID) {
-                                initializePlayback(message, args[0], false, spotifyAPI, librespot);
+                                spotify_json_1.DEVICE_ID) {
+                                initializePlayback(message, args[0], false, spotifyAPI, opusStream);
                             }
                             else {
-                                initializePlayback(message, args[0], true, spotifyAPI, librespot);
+                                initializePlayback(message, args[0], true, spotifyAPI, opusStream);
                             }
                         }
                         else {
@@ -224,13 +221,13 @@ function sendResults(message, items) {
  * @param {string | null} link - link to play on spotify
  * @param {boolean} transfer - passthrough if playback needs to be transfered
  * @param {SpotifyWebApi} spotifyAPI - passthrough spotify API instance
- * @param {ChildProcessWithoutNullStreams} librespot - passthrough librespot instance
+ * @param {opus.Decoder} opusStream - passthrough opus stream
  */
-function initializePlayback(message, link, transfer, spotifyAPI, librespot) {
+function initializePlayback(message, link, transfer, spotifyAPI, opusStream) {
     // check if already in channel
     if (message.guild?.voice?.connection) {
         if (message.guild.voice.channelID === message.member?.voice.channelID) {
-            playSpotify(message, link, transfer, message.guild.voice.connection, spotifyAPI, librespot);
+            playSpotify(message, link, transfer, message.guild.voice.connection, true, spotifyAPI, opusStream);
         }
         else {
             message.channel.send(embed.setDescription("Please join the bot's voice channel first."));
@@ -240,7 +237,7 @@ function initializePlayback(message, link, transfer, spotifyAPI, librespot) {
     // we already tested earlier that message.member has a voiceChannel
     else {
         message.member?.voice?.channel?.join().then((connection) => {
-            playSpotify(message, link, transfer, connection, spotifyAPI, librespot);
+            playSpotify(message, link, transfer, connection, false, spotifyAPI, opusStream);
         });
     }
 }
@@ -250,47 +247,28 @@ function initializePlayback(message, link, transfer, spotifyAPI, librespot) {
  * @param {string | null} link - link of song/episode/... to play in Spotify
  * @param {boolean} transfer - must playback transfered to Librespot device before starting playback
  * @param {VoiceConnection} connection - voiceConnection of bot to play audio to Discord
+ * @param {boolean} alreadyConnected - if true, we don't need a new dispatcher because audio stream is already connected
  * @param {SpotifyWebApi} spotifyAPI - Spotify API instance
- * @param {ChildProcessWithoutNullStreams} librespot - Librespot client
+ * @param {opus.Encoder} opusStream - opus stream
  */
-function playSpotify(message, link, transfer, connection, spotifyAPI, librespot) {
-    // start playback on Librespot Device
-    // start playing specified URL on Librespot device
+function playSpotify(message, link, transfer, connection, alreadyConnected, spotifyAPI, opusStream) {
+    // start playing specified URL on librespot device
     if (link) {
-        if (transfer) {
-            spotifyAPI.transferMyPlayback([spotify_json_1.default.DEVICE_ID]).then(function () {
-                spotifyAPI.play({
-                    device_id: spotify_json_1.default.DEVICE_ID,
-                    uris: [link],
-                }).then(function () {
-                    play(message, connection, librespot);
-                    message.react("▶️");
-                }, function (error) {
-                    console.error("--- ERROR STARTING SPOTIFY PLAYBACK ---\n", error);
-                    message.channel.send(embed.setDescription("Playback could not be started. Please try again later."));
-                });
-            }, function (error) {
-                console.error("--- ERROR STARTING SPOTIFY PLAYBACK ---\n", error);
-                message.channel.send(embed.setDescription("Playback could not be started. Please try again later."));
-            });
-        }
-        else {
-            spotifyAPI.play({
-                device_id: spotify_json_1.default.DEVICE_ID,
-                uris: [link],
-            }).then(function () {
-                play(message, connection, librespot);
-                message.react("▶️");
-            }, function (error) {
-                console.error("--- ERROR STARTING SPOTIFY PLAYBACK ---\n", error);
-                message.channel.send(embed.setDescription("Playback could not be started. Please try again later."));
-            });
-        }
+        spotifyAPI.play({
+            device_id: spotify_json_1.DEVICE_ID,
+            uris: [link],
+        }).then(function () {
+            play(message, connection, opusStream);
+            message.react("▶️");
+        }, function (error) {
+            console.error("--- ERROR STARTING SPOTIFY PLAYBACK ---\n", error);
+            message.channel.send(embed.setDescription("Playback could not be started. Please try again later."));
+        });
     }
     // else just start playback
     else if (transfer) {
-        spotifyAPI.transferMyPlayback([spotify_json_1.default.DEVICE_ID], { play: true }).then(function () {
-            play(message, connection, librespot);
+        spotifyAPI.transferMyPlayback([spotify_json_1.DEVICE_ID], { play: true }).then(function () {
+            play(message, connection, opusStream);
             message.react("▶️");
         }, function (error) {
             console.error("--- ERROR STARTING SPOTIFY PLAYBACK ---\n", error);
@@ -299,9 +277,11 @@ function playSpotify(message, link, transfer, connection, spotifyAPI, librespot)
     }
     else {
         spotifyAPI.play({
-            device_id: spotify_json_1.default.DEVICE_ID,
+            device_id: spotify_json_1.DEVICE_ID,
         }).then(function () {
-            play(message, connection, librespot);
+            if (!alreadyConnected) {
+                play(message, connection, opusStream);
+            }
             message.react("▶️");
         }, function (error) {
             console.error("--- ERROR STARTING SPOTIFY PLAYBACK ---\n", error);
@@ -313,19 +293,25 @@ function playSpotify(message, link, transfer, connection, spotifyAPI, librespot)
  * Connect Audio from spotify output to discord connection
  * @param {Message} message - message for context
  * @param {VoiceConnection} connection - voiceConnction to play audio
- * @param {ChildProcessWithoutNullStreams} librespot - librespot instance to get audio
+ * @param {opus.Encoder} opusStream - opus stream
  */
-function play(message, connection, librespot) {
+function play(message, connection, opusStream) {
+    const dispatcher = connection.play(opusStream, { type: "opus", highWaterMark: 3 });
     // TODO check if dispatcher is already playing, handle accordingly
-    const dispatcher = connection.play(librespot.stdout, { type: "converted", highWaterMark: 24 });
     dispatcher.on("start", () => {
+        opusStream.resume();
         console.log("Stream started");
     });
     dispatcher.on("error", (error) => {
         console.error("Dispatcher error\n", error);
     });
     dispatcher.on("finish", () => {
+        opusStream.pause();
         console.log("Stream finished.");
+    });
+    dispatcher.on("close", () => {
+        opusStream.pause();
+        console.log("Stream closed.");
     });
 }
 /**

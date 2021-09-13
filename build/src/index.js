@@ -8,6 +8,7 @@ const fs_1 = require("fs");
 const child_process_1 = require("child_process");
 const discord_js_1 = require("discord.js");
 const spotify_web_api_node_1 = __importDefault(require("spotify-web-api-node"));
+const prism_media_1 = require("prism-media");
 const refreshSpotifyToken_1 = __importDefault(require("./refreshSpotifyToken"));
 const discord_json_1 = __importDefault(require("../config/discord.json"));
 const spotify_json_1 = __importDefault(require("../config/spotify.json"));
@@ -42,10 +43,10 @@ const spotifyAPI = new spotify_web_api_node_1.default({
 console.log("Initiliazing discord client...");
 const client = new discord_js_1.Client();
 client.commands = new discord_js_1.Collection();
-const commandFiles = fs_1.readdirSync("./build/src/commands").filter((file) => file.endsWith(".js"));
-const eventFilesDiscord = fs_1.readdirSync("./build/src/events/discord").filter((file) => file.endsWith(".js"));
-const eventFilesLibrespot = fs_1.readdirSync("./build/src/events/librespot").filter((file) => file.endsWith(".js"));
-const eventFilesProcess = fs_1.readdirSync("./build/src/events/process").filter((file) => file.endsWith(".js"));
+const commandFiles = (0, fs_1.readdirSync)("./build/src/commands").filter((file) => file.endsWith(".js"));
+const eventFilesDiscord = (0, fs_1.readdirSync)("./build/src/events/discord").filter((file) => file.endsWith(".js"));
+const eventFilesLibrespot = (0, fs_1.readdirSync)("./build/src/events/librespot").filter((file) => file.endsWith(".js"));
+const eventFilesProcess = (0, fs_1.readdirSync)("./build/src/events/process").filter((file) => file.endsWith(".js"));
 for (const file of commandFiles) {
     const command = require(`./commands/${file}`);
     client.commands.set(command.name, command);
@@ -53,37 +54,69 @@ for (const file of commandFiles) {
 console.log("Initializing librespot...");
 // random 4 digit number to identify client in Spotify
 const librespotId = Math.floor(1000 + Math.random() * 9000);
-const librespot = child_process_1.spawn("./lib/librespot", [
+const librespot = (0, child_process_1.spawn)("./lib/librespot", [
     "-n", `Spoticord#${librespotId}`,
     "--device-type", "computer",
     "-b", "320",
     "-u", spotify_json_1.default.USERNAME,
     "-p", spotify_json_1.default.PASSWORD,
+    "-c", "./.cache",
+    "--cache-size-limit", "1G",
+    "--disable-discovery",
     "--backend", "pipe",
-    "--initial-volume", "80",
-    // '--passthrough', // TODO: raw ogg into ogg/opus for discord?
+    "--initial-volume", "75",
+    // '--passthrough', // TODO: raw ogg into ogg/opus for discord? (probably not)
+    "--format", "S16",
     // "-v", // verbose debug logs
 ], { stdio: "pipe" });
+// output librespot debug and error logs in console
+librespot.stderr.pipe(process.stdout);
+// FFmpeg instance to resample from Spotify's 44100Hz to Discord's/Opus' 48000Hz
+const resampler = new prism_media_1.FFmpeg({
+    args: [
+        "-analyzeduration", "0",
+        "-loglevel", "0",
+        "-f", "s16le",
+        "-ar", "44100",
+        "-ac", "2",
+        "-re",
+        "-i", "-",
+        "-f", "s16le",
+        "-ar", "48000",
+        "-ac", "2",
+        "-af", "aresample=resampler=soxr",
+    ], shell: true,
+});
+resampler.on("error", (error) => {
+    console.error(error);
+});
+// encode resampled PCM-data into opus packets
+const opusEncoder = new prism_media_1.opus.Encoder({ frameSize: 480, channels: 2, rate: 48000 });
+opusEncoder.on("error", (error) => {
+    console.error(error);
+});
+// create pipeline
+librespot.stdout.pipe(resampler).pipe(opusEncoder);
+// events from discord client
 for (const file of eventFilesDiscord) {
     const event = require(`./events/discord/${file}`);
     if (event.once) {
-        client.once(event.name, (...args) => event.execute(...args, client, spotifyAPI, librespot));
+        client.once(event.name, (...args) => event.execute(...args, client, spotifyAPI, opusEncoder));
     }
     else {
-        client.on(event.name, (...args) => event.execute(...args, client, spotifyAPI, librespot));
+        client.on(event.name, (...args) => event.execute(...args, client, spotifyAPI, opusEncoder));
     }
 }
+// event from child_process librespot
 for (const file of eventFilesLibrespot) {
     const event = require(`./events/librespot/${file}`);
     librespot.on(event.name, (...args) => event.execute(...args));
 }
+// events from process
 for (const file of eventFilesProcess) {
     const event = require(`./events/process/${file}`);
     process.on(event.name, (...args) => event.execute(...args, client, librespot));
 }
-librespot.stderr.pipe(process.stdout);
-// librespot.stdout.on('data', () => {});
-// Experiment success: size of 1 chunk is 4096 Bytes
 // every spotify access_token is valid for 3600 sec (60min)
 // setInterval: refresh the access_token every ~50min
 setInterval(handleRefreshedSpotifyToken, 3000000);
@@ -109,7 +142,8 @@ function handleRefreshedSpotifyToken() {
                         if (element.id) {
                             const spotifyConfigWithId = spotify_json_1.default;
                             spotifyConfigWithId.DEVICE_ID = element.id;
-                            fs_1.writeFileSync("./build/config/spotify.json", JSON.stringify(spotifyConfigWithId, null, 4));
+                            (0, fs_1.writeFileSync)("./build/config/spotify.json", JSON.stringify(spotifyConfigWithId, null, 4));
+                            console.log("Saved device id from Spotify!");
                             deviceNotFound = false;
                         }
                     }

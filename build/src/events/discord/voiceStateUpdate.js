@@ -1,8 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const spotify_json_1 = require("../../../config/spotify.json");
 module.exports = {
     name: "voiceStateUpdate",
-    execute(oldState, newState, client) {
+    execute(oldState, newState, client, spotifyAPI) {
         if (!client.user) {
             console.error("Discord client is not logged in!");
             return;
@@ -12,6 +13,8 @@ module.exports = {
         if (oldState.id == client.user.id) {
             // the bot left the voice channel
             if (newState.channel == null) {
+                // TODO: handle error?
+                spotifyAPI.pause({ device_id: spotify_json_1.DEVICE_ID });
                 return;
             }
             // the bot joined a voice channel
@@ -33,7 +36,8 @@ module.exports = {
         const clientUser = channelMembers.get(client.user.id);
         if (clientUser && channelMembers.size === 1) {
             clientUser.voice.connection?.disconnect();
-            // TODO pause Spotify
+            // pause Spotify TODO: handle error?
+            spotifyAPI.pause({ device_id: spotify_json_1.DEVICE_ID });
         }
     },
 };
