@@ -91,6 +91,7 @@ const resampler = new FFmpeg({
 		"-f", "s16le",
 		"-ar", "48000",
 		"-ac", "2",
+		"-af", "aresample=resampler=soxr",
 	],
 });
 
