@@ -2,9 +2,8 @@
 
 *spoticord* is a discord bot that allows you to play your music directly from spotify to discord. You need to host your own instance of this bot because it ties directly to your Spotify account. You need Spotify Premium for this to work.
 
-## Disclaimer  
-
-You should not consider this code as production-ready. Sometimes audio behaves really funky and laggy and most of the time the pacing is a little off. However, I hope I can resolve these issues in the near future.
+## Note
+When pausing and resuming playback you may experience skipping and/or sped up audio.
 
 ## Installation
 
@@ -30,9 +29,9 @@ You should not consider this code as production-ready. Sometimes audio behaves r
 
 ## Usage
 
-Start the bot with ```node .```\
-The default command prefix is ```$``` but you can also mention the bot instead of using the prefix.  
-```$help``` will send you an summary of all available commands.
+Start the bot with `node .`\
+The default command prefix is `$` but you can also mention the bot instead of using the prefix.  
+`$help` will send you an summary of all available commands.
 
 ## Disclaimer
 
