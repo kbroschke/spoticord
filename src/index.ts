@@ -1,7 +1,7 @@
 console.log("Loading libraries...");
 import { readdirSync, writeFileSync } from "fs";
 import { spawn } from "child_process";
-import { Client, Collection } from "discord.js";
+import { Client, Collection, Intents } from "discord.js";
 import SpotifyWebApi from "spotify-web-api-node";
 import { FFmpeg, opus } from "prism-media";
 import refreshSpotifyToken from "./refreshSpotifyToken";
@@ -42,7 +42,14 @@ const spotifyAPI = new SpotifyWebApi({
 });
 
 console.log("Initiliazing discord client...");
-const client = new Client() as Client & ClientCommands;
+const client = new Client({ intents:
+	[
+		Intents.FLAGS.DIRECT_MESSAGES,
+		Intents.FLAGS.GUILD_MESSAGES,
+		Intents.FLAGS.GUILD_VOICE_STATES,
+	],
+}) as Client & ClientCommands;
+
 client.commands = new Collection();
 
 const commandFiles = readdirSync("./build/src/commands").filter((file) => file.endsWith(".js"));
