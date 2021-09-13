@@ -68,8 +68,11 @@ const librespot = spawn(
 		"-b", "320",
 		"-u", spotifyConfig.USERNAME,
 		"-p", spotifyConfig.PASSWORD,
+		"-c", "./.cache",
+		"--cache-size-limit", "1G",
+		"--disable-discovery",
 		"--backend", "pipe",
-		"--initial-volume", "80",
+		"--initial-volume", "75",
 		// '--passthrough', // TODO: raw ogg into ogg/opus for discord? (probably not)
 		"--format", "S16",
 		// "-v", // verbose debug logs
@@ -87,12 +90,13 @@ const resampler = new FFmpeg({
 		"-f", "s16le",
 		"-ar", "44100",
 		"-ac", "2",
+		"-re",
 		"-i", "-",
 		"-f", "s16le",
 		"-ar", "48000",
 		"-ac", "2",
 		"-af", "aresample=resampler=soxr",
-	],
+	], shell: true,
 });
 
 resampler.on("error", (error) => {
