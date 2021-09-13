@@ -95,9 +95,17 @@ const resampler = new FFmpeg({
 	],
 });
 
+resampler.on("error", (error) => {
+	console.error(error);
+});
+
 // encode resampled PCM-data into opus packets
 const opusEncoder = new opus.Encoder(
 	{ frameSize: 480, channels: 2, rate: 48000 });
+
+opusEncoder.on("error", (error) => {
+	console.error(error);
+});
 
 // create pipeline
 librespot.stdout.pipe(resampler).pipe(opusEncoder);
