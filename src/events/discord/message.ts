@@ -1,7 +1,7 @@
-import { ChildProcessWithoutNullStreams } from "child_process";
 import { ClientCommands } from "ClientCommands";
 import { Client, Message } from "discord.js";
 import SpotifyWebApi from "spotify-web-api-node";
+import { opus } from "prism-media";
 
 const prefixes = require("../../../config/prefixes.json");
 
@@ -9,7 +9,7 @@ module.exports = {
 	name: "message",
 	execute(message: Message,
 		client: Client & ClientCommands, spotifyAPI: SpotifyWebApi,
-		librespot: ChildProcessWithoutNullStreams) {
+		opusStream: opus.Encoder) {
 		// dont react to other Bots
 		if (message.author.bot) return;
 
@@ -60,7 +60,7 @@ module.exports = {
 		if (!commandModule) return;
 
 		try {
-			commandModule.execute(message, args, spotifyAPI, librespot);
+			commandModule.execute(message, args, spotifyAPI, opusStream);
 		}
 		catch (error) {
 			console.error(error);

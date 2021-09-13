@@ -3,6 +3,7 @@ import { readdirSync, writeFileSync } from "fs";
 import { spawn } from "child_process";
 import { Client, Collection } from "discord.js";
 import SpotifyWebApi from "spotify-web-api-node";
+import { FFmpeg, opus } from "prism-media";
 import refreshSpotifyToken from "./refreshSpotifyToken";
 import discordConfig from "../config/discord.json";
 import spotifyConfig from "../config/spotify.json";
@@ -69,40 +70,65 @@ const librespot = spawn(
 		"-p", spotifyConfig.PASSWORD,
 		"--backend", "pipe",
 		"--initial-volume", "80",
-		// '--passthrough', // TODO: raw ogg into ogg/opus for discord?
+		// '--passthrough', // TODO: raw ogg into ogg/opus for discord? (probably not)
 		"--format", "S16",
 		// "-v", // verbose debug logs
 	],
 	{ stdio: "pipe" });
 
-// Experiment success: size of 1 chunk is 4096 Bytes
-// librespot.stdout.on("data", (chunk) => { });
+// output librespot debug and error logs in console
+librespot.stderr.pipe(process.stdout);
 
+// FFmpeg instance to resample from Spotify's 44100Hz to Discord's/Opus' 48000Hz
+const resampler = new FFmpeg({
+	args: [
+		"-analyzeduration", "0",
+		"-loglevel", "0",
+		"-f", "s16le",
+		"-ar", "44100",
+		"-ac", "2",
+		"-i", "-",
+		"-f", "s16le",
+		"-ar", "48000",
+		"-ac", "2",
+	],
+});
+
+// encode resampled PCM-data into opus packets
+const opusEncoder = new opus.Encoder(
+	{ frameSize: 480, channels: 2, rate: 48000 });
+
+// create pipeline
+librespot.stdout.pipe(resampler).pipe(opusEncoder);
+
+// events from discord client
 for (const file of eventFilesDiscord) {
 	const event = require(`./events/discord/${file}`);
 	if (event.once) {
 		client.once(event.name,
-			(...args) => event.execute(...args, client, spotifyAPI, librespot));
+			(...args) => event.execute(...args, client, spotifyAPI,
+				opusEncoder));
 	}
 	else {
 		client.on(event.name,
-			(...args) => event.execute(...args, client, spotifyAPI, librespot));
+			(...args) => event.execute(...args, client, spotifyAPI,
+				opusEncoder));
 	}
 }
 
+// event from child_process librespot
 for (const file of eventFilesLibrespot) {
 	const event = require(`./events/librespot/${file}`);
 	librespot.on(event.name,
 		(...args) => event.execute(...args));
 }
 
+// events from process
 for (const file of eventFilesProcess) {
 	const event = require(`./events/process/${file}`);
 	process.on(event.name,
 		(...args) => event.execute(...args, client, librespot));
 }
-
-librespot.stderr.pipe(process.stdout);
 
 // every spotify access_token is valid for 3600 sec (60min)
 // setInterval: refresh the access_token every ~50min
