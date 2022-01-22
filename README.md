@@ -35,5 +35,5 @@ The default command prefix is `$` but you can also mention the bot instead of us
 
 ## Disclaimer
 
-This bot uses [librespot](https://github.com/librespot-org/librespotlibrespot) to play music. And as they say:  
+This bot uses [librespot](https://github.com/librespot-org/librespot) to play music. And as they say:  
 "Using this code to connect to Spotify's API is probably forbidden by them. Use at your own risk." Be aware!
