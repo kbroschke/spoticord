@@ -2,7 +2,7 @@
   "name": "spoticord",
   "version": "1.0.0",
   "description": "*spoticord* is a discord bot that allows you to play your music directly from spotify to discord. You need to host your own instance of this bot because it ties directly to your Spotify account. You need an Spotify Premium account for this to work.",
-  "main": "build/src/index.js",
+  "main": "src/index.js",
   "dependencies": {
     "@discordjs/voice": "^0.8.0",
     "bufferutil": "^4.0.6",
@@ -25,8 +25,8 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "init": "node build/scripts/init.js",
-    "configs": "node build/scripts/createConfigs.js",
+    "init": "node scripts/init.js",
+    "configs": "node scripts/createConfigs.js",
     "postinstall": "scripts/librespot.sh"
   },
   "author": "kbroschke",
