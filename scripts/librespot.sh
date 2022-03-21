@@ -1,3 +1,4 @@
+rm -R lib
 mkdir lib
 cd ./lib
 git clone https://github.com/librespot-org/librespot.git
