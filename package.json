@@ -4,7 +4,7 @@
   "description": "*spoticord* is a discord bot that allows you to play your music directly from spotify to discord. You need to host your own instance of this bot because it ties directly to your Spotify account. You need an Spotify Premium account for this to work.",
   "main": "build/src/index.js",
   "dependencies": {
-    "@discordjs/voice": "^0.6.0",
+    "@discordjs/voice": "^0.8.0",
     "bufferutil": "^4.0.3",
     "discord.js": "^13.1.0",
     "ffmpeg-static": "^4.4.0",
@@ -15,20 +15,21 @@
     "zlib-sync": "^0.1.7"
   },
   "devDependencies": {
-    "@types/node": "^16.9.1",
+    "@types/node": "^16.11.26",
     "@types/spotify-web-api-node": "^5.0.3",
-    "@typescript-eslint/eslint-plugin": "^4.29.2",
-    "@typescript-eslint/parser": "^4.29.2",
-    "eslint": "^7.32.0",
+    "@typescript-eslint/eslint-plugin": "^5.15.0",
+    "@typescript-eslint/parser": "^5.15.0",
+    "eslint": "^8.11.0",
     "eslint-config-google": "^0.14.0",
     "typescript": "^4.3.5"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "init": "node build/scripts/init.js",
-    "configs": "node build/scripts/createConfigs.js"
+    "configs": "node build/scripts/createConfigs.js",
+    "postinstall": "scripts/librespot.sh"
   },
-  "author": "",
+  "author": "kbroschke",
   "license": "MIT",
   "repository": {
     "type": "git",
