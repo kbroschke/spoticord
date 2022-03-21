@@ -17,7 +17,7 @@ else {
 	process.exit();
 }
 
-let spotifyAPI;
+let spotifyAPI: SpotifyWebApi;
 
 // load spotify config
 console.log("Checking spotify config...");
@@ -32,6 +32,7 @@ if (spotifyConfig.CLIENT_ID &&
 	});
 	if (spotifyConfig.REFRESH_TOKEN) {
 		console.log("Spotify config complete!");
+		testLogin(spotifyAPI);
 	}
 	else if (spotifyConfig.AUTH_CODE) {
 		spotifyAPI.authorizationCodeGrant(spotifyConfig.AUTH_CODE).then(
@@ -40,7 +41,7 @@ if (spotifyConfig.CLIENT_ID &&
 				fs.writeFileSync("./build/config/spotify.json",
 					JSON.stringify(spotifyConfig, null, 4));
 				console.log("Successfully updated refresh token!");
-				console.log("Everything's ready, you can now start the bot with 'node .'!");
+				testLogin(spotifyAPI);
 			},
 			function(error) {
 				console.error(error);
@@ -58,12 +59,25 @@ if (spotifyConfig.CLIENT_ID &&
 			"user-modify-playback-state",
 			"user-read-currently-playing",
 		];
-		console.log(spotifyAPI.createAuthorizeURL(scopes, "DO NOT COPY THIS PART"));
+		console.log(spotifyAPI.createAuthorizeURL(scopes, "DO_NOT_COPY_THIS_PART"));
 		process.exit();
 	}
 }
 else {
-	console.log("A required parameter is missing. Please check the config file at config/spotify.json.");
 	console.log(strings.spotify.configNotFound);
 	process.exit();
+}
+
+/** Extracted login test because it's used multiple times.
+ * @param {SpotifyWebApi} spotifyAPI - API instance to test
+ */
+function testLogin(spotifyAPI: SpotifyWebApi) {
+	spotifyAPI.getMe().then(
+		(profile) => {
+			console.log(`Logged in as ${profile.body.email}.`);
+		},
+		(response) => {
+			console.log(strings.spotify.loginError);
+			console.log(response);
+		});
 }

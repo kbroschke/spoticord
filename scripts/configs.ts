@@ -11,7 +11,6 @@ if (!fs.existsSync("./build/config")) {
 console.log("Creating empty discord config file...");
 const defaultConfigDiscord = {
 	"BOT_TOKEN": "",
-	// 'DISCORD_USER_ID_OF_SPOTIFY_ACCOUNT_OWNER': '',
 };
 fs.writeFileSync(
 	"./build/config/discord.json",
@@ -34,7 +33,7 @@ fs.writeFileSync("./build/config/spotify.json",
 	JSON.stringify(defaultConfigSpotify, null, 4));
 console.log(strings.spotify.configNotFound);
 
-// make sure proper prefix-file exists
+// make sure proper empty prefix-file exists
 if (!fs.existsSync("./build/config/prefixes.json")) {
 	fs.writeFileSync("./build/config/prefixes.json", "{}");
 }
