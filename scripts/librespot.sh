@@ -1,3 +1,4 @@
+#!/bin/bash
 rm -R lib
 mkdir lib
 cd ./lib
