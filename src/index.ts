@@ -52,10 +52,10 @@ const client = new Client({ intents:
 
 client.commands = new Collection();
 
-const commandFiles = readdirSync("./build/src/commands").filter((file) => file.endsWith(".js"));
-const eventFilesDiscord = readdirSync("./build/src/events/discord").filter((file) => file.endsWith(".js"));
-const eventFilesLibrespot = readdirSync("./build/src/events/librespot").filter((file) => file.endsWith(".js"));
-const eventFilesProcess = readdirSync("./build/src/events/process").filter((file) => file.endsWith(".js"));
+const commandFiles = readdirSync("./src/commands").filter((file) => file.endsWith(".js"));
+const eventFilesDiscord = readdirSync("./src/events/discord").filter((file) => file.endsWith(".js"));
+const eventFilesLibrespot = readdirSync("./src/events/librespot").filter((file) => file.endsWith(".js"));
+const eventFilesProcess = readdirSync("./src/events/process").filter((file) => file.endsWith(".js"));
 
 for (const file of commandFiles) {
 	const command = require(`./commands/${file}`);
@@ -179,7 +179,7 @@ function handleRefreshedSpotifyToken() {
 							if (element.id) {
 								const spotifyConfigWithId = spotifyConfig;
 								spotifyConfigWithId.DEVICE_ID = element.id;
-								writeFileSync("./build/config/spotify.json", JSON.stringify(spotifyConfigWithId, null, 4));
+								writeFileSync("./config/spotify.json", JSON.stringify(spotifyConfigWithId, null, 4));
 								console.log("Saved device id from Spotify!");
 								deviceNotFound = false;
 							}
