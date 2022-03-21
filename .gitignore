@@ -104,12 +104,12 @@ dist
 .tern-port
 
 
---- template end ---
+#--- template end ---
 
 # ESLint config
 # .eslintrc.json
 
 # config files with bot tokens
 config/
-build/config
+build/
 lib/librespot
