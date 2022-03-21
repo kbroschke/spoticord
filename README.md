@@ -7,24 +7,21 @@ When pausing and resuming playback you may experience skipping and/or sped up au
 
 ## Installation
 
-### Beforehand:
+### Prerequisites
 - Create a new application in [Discord's Developer Portal](https://discord.com/developers/applications)
 - Create a new application in [Spotify's Developer Dashboard](https://developer.spotify.com/dashboard/applications)
+- Install Rust and general dependencies for librespot compilation ([see their wiki](https://github.com/librespot-org/librespot/blob/master/COMPILING.md##setup))
 
-### On the system running the bot:
+### Installation
 - Install node (v14) (e.g. using [nvm](https://github.com/nvm-sh/nvm))
-- Compile librespot
-  - Follow the instructions from [their repo](https://github.com/librespot-org/librespot/blob/master/COMPILING.md) (we don't need any audio library dependencies since we're using pipe backend)
-  - For compiling use: ```cargo build --release --no-default-features```
-- Clone this repo
-  - (e.g. with ```git clone https://github.com/kbroschke/spoticord.git```)
+- Download the latest release from this repo and extract it
 - Install dependencies
-  - navigate into the directory you just downloaded from GitHub
-  - run ```npm ci```
-- Copy the librespot executable from `librespot/target/release/` into `spoticord/lib/`
-- Fill in your details
+  - Navigate into the directory you just downloaded from GitHub
+  - Run `npm ci`
+  - (If an error occurs check if there is an build tool missing for compiling one of the dependencies)
+- Provide your credentials
   - In your spoticord directory, run `npm run configs` to create emtpy config files.
-  - Follow the instructions you receive in your terminal
+  - TODO: migrate instructions from terminal output to github
   - Run `npm run init` to start the Spotify authentification process and follow the instructions you receive in your terminal
 
 ## Usage
