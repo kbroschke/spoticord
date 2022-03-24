@@ -1,4 +1,5 @@
-import { Client, Collection, GuildMember, VoiceState } from "discord.js";
+import { getVoiceConnection } from "@discordjs/voice";
+import { Client, VoiceBasedChannel, VoiceState } from "discord.js";
 import SpotifyWebApi from "spotify-web-api-node";
 import { DEVICE_ID } from "../../../config/spotify.json";
 
@@ -11,38 +12,55 @@ module.exports = {
 			return;
 		}
 
-		let channelMembers: Collection<string, GuildMember>;
+		let channel: VoiceBasedChannel;
 
-		// the bot created this event
 		if (oldState.id == client.user.id) {
-			// the bot left the voice channel
+			// the bot created this event
 			if (newState.channel == null) {
-				// TODO: handle error?
-				spotifyAPI.pause({ device_id: DEVICE_ID });
+				// the bot left a voice channel
+				pauseSpotify(spotifyAPI);
 				return;
 			}
-			// the bot joined a voice channel
 			else {
-				channelMembers = newState.channel.members;
+				// the bot joined a voice channel
+				channel = newState.channel;
+				console.log("Bot joined a voice channel!");
 			}
 		}
 		else {
-			// no oldState means the user joined the channel and didn't leave it
-			if (oldState.channel == null) {
-				return;
+			const userChannel = oldState.channel;
+			const botChannel = oldState.guild.me?.voice.channel;
+			if (userChannel && botChannel && userChannel.id === botChannel.id) {
+				// user left our channel, oldState.channel.members are all users in old channel without the one that left
+				channel = oldState.channel;
+				console.log("Someone may left us alone.");
 			}
 			else {
-				channelMembers = oldState.channel.members;
+				// user joined our channel or something entirely unrelated to us happened, ignore it
+				return;
 			}
 		}
 
-		// size must be 1 because:
-		// when user leaves, oldState does NOT include this user in channel.members
-		const clientUser = channelMembers.get(client.user.id);
-		if (clientUser && channelMembers.size === 1) {
-			clientUser.voice.connection?.disconnect();
-			// pause Spotify TODO: handle error?
-			spotifyAPI.pause({ device_id: DEVICE_ID });
+		// size === 1 means we are lonely in our channel
+		if (channel.members.size === 1) {
+			getVoiceConnection(channel.guildId)?.destroy();
 		}
 	},
 };
+
+// TODO move back into if statement
+/**
+ * pauses playback on a spotify API
+ * @param {SpotifyWebApi} spotifyAPI
+ */
+function pauseSpotify(spotifyAPI: SpotifyWebApi) {
+	spotifyAPI.pause({ "device_id": DEVICE_ID }).then(
+		function() {
+			console.log("Spotify playback paused after leaving voice channel.");
+		},
+		function(error) {
+			console.error("ERROR: pause", error);
+			// TODO catch nothings playing
+		},
+	);
+}
