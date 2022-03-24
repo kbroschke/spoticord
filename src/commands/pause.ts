@@ -2,8 +2,6 @@ import { Message, MessageEmbed } from "discord.js";
 import SpotifyWebApi from "spotify-web-api-node";
 import { DEVICE_ID } from "../../config/spotify.json";
 
-const embed = new MessageEmbed().setColor("#1DB954");
-
 module.exports = {
 	name: "pause",
 	description: "Pauses Spotify playback.",
@@ -13,8 +11,13 @@ module.exports = {
 				message.react("⏸️");
 			},
 			function(error) {
-				console.error("--- ERROR PAUSING PLAYBACK ---\n", error);
-				message.channel.send(embed.setDescription("Playback could not be paused. Please try again later."));
+				console.error("ERROR: pause", error);
+				const embed = new MessageEmbed({
+					color: "#f0463a",
+					description: "Playback could not be paused.",
+				});
+				message.channel.send({ embeds: [embed] });
+				// TODO catch nothings playing
 			},
 		);
 	},

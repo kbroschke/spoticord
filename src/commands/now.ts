@@ -1,6 +1,5 @@
 import { Message, MessageEmbed } from "discord.js";
 import SpotifyWebApi from "spotify-web-api-node";
-const embed = new MessageEmbed().setColor("#1DB954");
 
 module.exports = {
 	name: "now",
@@ -59,22 +58,25 @@ module.exports = {
 						timeBar += "▬";
 					}
 
-					message.channel.send(embed
-						.setTitle(song)
-						.setDescription(
+					const embed = new MessageEmbed({
+						title: song,
+						color: "#1DB954",
+						description:
 							`by ${creatorList}\n` +
 							`from ${contextName}\n\n` +
 							`${progressMin}:${progressSec}`+
 							`\u2002${timeBar}\u2002`+
-							`${totalMin}:${totalSec}`)
-						.setThumbnail(coverIMG)
-						.setURL(urlSong));
+							`${totalMin}:${totalSec}`,
+						url: urlSong,
+					}).setThumbnail(coverIMG);
+
+					message.channel.send({ embeds: [embed] });
 				}
 				else {
 					sendNothingsPlaying(message);
 				}
 			}, function(error) {
-				console.error("--- ERROR PLAYBACK STATE ---\n", error);
+				console.error("ERROR: getMyCurrentPlayingTrack", error);
 				sendNothingsPlaying(message);
 			},
 		);
@@ -86,14 +88,16 @@ module.exports = {
  * @param {number} progressMS - number in milliseconds
  * @return {string[]} Array of minutes and seconds as strings
  */
-function msToMMSS(progressMS: number) {
+function msToMMSS(progressMS: number): string[] {
 	let progressInS = Math.floor(progressMS / 1000);
 	const progressInM = Math.floor(progressInS / 60);
 	progressInS = progressInS % 60;
 
+	const progressStringInM = progressInM.toString();
+	const progressStringInS = progressInS.toString();
 	return [
-		progressInM.toString().length < 2 ? "0" + progressInM : progressInM,
-		progressInS.toString().length < 2 ? "0" + progressInS : progressInS,
+		(progressStringInM.length < 2 ? "0" : "") + progressStringInM,
+		(progressStringInS.length < 2 ? "0" : "") + progressStringInS,
 	];
 }
 
@@ -102,5 +106,10 @@ function msToMMSS(progressMS: number) {
  * @param {Message} message - Send response in channel of this message
  */
 function sendNothingsPlaying(message: Message) {
-	message.channel.send(embed.setDescription("Nothing's currently playing."));
+	const embed = new MessageEmbed({
+		color: "#f0463a",
+		description: "Nothing's currently playing.",
+	});
+	message.channel.send({ embeds: [embed] });
+	// TODO catch nothings playing
 }

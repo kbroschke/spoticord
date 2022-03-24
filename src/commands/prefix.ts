@@ -1,8 +1,6 @@
 import { Message, MessageEmbed } from "discord.js";
 import { readFileSync, writeFileSync } from "fs";
 
-const embed = new MessageEmbed().setColor("#1DB954");
-
 module.exports = {
 	name: "prefix",
 	description: "Sets new prefix. If no argument is given it shows the current prefix.",
@@ -12,14 +10,17 @@ module.exports = {
 
 		let prefixes;
 		try {
-			prefixes = JSON.parse(
-				readFileSync("../../config/prefixes.json").toString());
+			prefixes = JSON.parse(readFileSync("./config/prefixes.json").toString());
 		}
 		catch (error) {
-			console.error(error);
+			console.error("ERROR: readFileSync", error);
+			const embed = new MessageEmbed({
+				color: "#f0463a",
+				description: "Internal error: Could not read prefix database.",
+			});
+			message.channel.send({ embeds: [embed] });
 			return;
 		}
-
 
 		let prefix: string;
 		if (message.guild.id in prefixes) {
@@ -30,11 +31,15 @@ module.exports = {
 		}
 
 		if (args.length === 0) {
-			message.channel.send(embed.setDescription(
-				`Current command prefix is \`${prefix}\``));
+			const embed = new MessageEmbed({
+				color: "#1DB954",
+				description: `Current command prefix is \`${prefix}\``,
+			});
+			message.channel.send({ embeds: [embed] });
 			return;
 		}
-		if (message.member && !message.member.hasPermission("ADMINISTRATOR")) {
+
+		if (message.member && !message.member.permissions.has("ADMINISTRATOR")) {
 			message.reply("sorry but you're not an administrator.");
 			return;
 		}
@@ -46,11 +51,18 @@ module.exports = {
 				JSON.stringify(prefixes, null, 4));
 		}
 		catch (error) {
-			console.error("--- FS WRITE ERROR ---", error);
-			message.channel.send("Sorry! There was an internal error!");
+			console.error("ERROR: writeFileSync", error);
+			const embed = new MessageEmbed({
+				color: "#f0463a",
+				description: "Internal error: Could not write prefix database.",
+			});
+			message.channel.send({ embeds: [embed] });
 		}
 
-		message.channel.send(embed.setDescription(
-			`Command prefix set to \`${prefix}\``));
+		const embed = new MessageEmbed({
+			color: "#1DB954",
+			description: `Command prefix is \`${prefix}\``,
+		});
+		message.channel.send({ embeds: [embed] });
 	},
 };
