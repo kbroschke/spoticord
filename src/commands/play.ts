@@ -1,10 +1,11 @@
-import { Message, MessageEmbed, VoiceConnection } from "discord.js";
+import { Message, MessageEmbed } from "discord.js";
 import SpotifyWebApi from "spotify-web-api-node";
-import { opus } from "prism-media";
 import { DEVICE_ID } from "../../config/spotify.json";
+import { AudioPlayer, getVoiceConnection, joinVoiceChannel, VoiceConnection } from "@discordjs/voice";
 
-const embed = new MessageEmbed().setColor("#1DB954");
-const embedSearch = new MessageEmbed().setColor("#1DB954").setTitle("Search results");
+const errorEmbed = new MessageEmbed({
+	color: "#f0463a",
+});
 
 type searchType = Parameters<SpotifyWebApi["search"]>[1][number]
 
@@ -12,26 +13,31 @@ module.exports = {
 	name: "play",
 	description: "Start playback of given track/playlist/album/artist. If no argument is given, current Spotify player gets just unpaused.",
 	execute(message: Message, args: string[], spotifyAPI: SpotifyWebApi,
-		opusStream: opus.Encoder) {
+		player: AudioPlayer) {
 		if (!message.member) {return;}
 		if (!message.member.voice.channel) {
 			message.reply("please join a voice channel first!");
 			return;
 		}
 
+		spotifyAPI = spotifyAPI;
+
 		spotifyAPI.getMyCurrentPlaybackState().then(
 			function(data) {
 				if (args.length === 0) {
 					if (JSON.stringify(data.body) === "{}") {
-						message.channel.send(embed.setDescription("Nothing's currently playing. You can start playback by providing something to play after the `play` command. To see all options use `help`."));
+						message.channel.send({ embeds: [
+							errorEmbed.setDescription("Nothing's currently playing. To see all commands use `help`."),
+						] });
+						// TODO catch nothings playing -> is this a good solution?
 					}
 					else if (data.body.device.id === DEVICE_ID) {
 						initializePlayback(message, null, false, spotifyAPI,
-							opusStream);
+							player);
 					}
 					else {
 						initializePlayback(message, null, true, spotifyAPI,
-							opusStream);
+							player);
 					}
 				}
 				else {
@@ -43,7 +49,9 @@ module.exports = {
 					case "5":
 						// TODO play results[args[0]];
 						// use TextChannel.awaitMessages();
-						message.channel.send(embed.setDescription("This feature is WIP"));
+						message.channel.send({ embeds: [
+							errorEmbed.setDescription("This feature is WIP"),
+						] });
 						break;
 					case "track":
 					case "album":
@@ -52,10 +60,11 @@ module.exports = {
 					case "show":
 					case "episode":
 						if (args.length < 2) {
-							message.channel.send(
-								embed.setDescription(
+							message.channel.send({ embeds: [
+								errorEmbed.setDescription(
 									"You need to provide the name of the "+
-									`${args[0]}!`));
+									`${args[0]}!`),
+							] });
 						}
 						else {
 							// remove 1st element so rest can be joined as search query
@@ -70,16 +79,16 @@ module.exports = {
 							console.log(data.body);
 							if (JSON.stringify(data.body) == "{}") {
 								initializePlayback(message, args[0], true,
-									spotifyAPI, opusStream);
+									spotifyAPI, player);
 							}
 							else if (data.body.device.id ==
 								DEVICE_ID) {
 								initializePlayback(message, args[0], false,
-									spotifyAPI, opusStream);
+									spotifyAPI, player);
 							}
 							else {
 								initializePlayback(message, args[0], true,
-									spotifyAPI, opusStream);
+									spotifyAPI, player);
 							}
 						}
 						else {
@@ -90,7 +99,7 @@ module.exports = {
 				}
 			},
 			function(error) {
-				console.error("Playback state error", error);
+				console.error("ERROR: getMyCurrentPlaybackState", error);
 			},
 		);
 	},
@@ -178,8 +187,10 @@ function searchSpotify(query: string, type: searchType[], message: Message,
 			}
 		},
 		function(error) {
-			console.error(error);
-			message.channel.send("Search did not complete successfully. Please try again later.");
+			console.error("ERROR: search", error);
+			message.channel.send({ embeds: [
+				errorEmbed.setDescription("Search did not complete successfully."),
+			] });
 		},
 	);
 }
@@ -259,7 +270,12 @@ function sendResults(message: Message, items:
 			answer += ` \`${element.type}\`\n`;
 		});
 
-		message.channel.send(embedSearch.setDescription(answer));
+		const searchEmbed = new MessageEmbed({
+			title: "Search results",
+			color: "#1DB954",
+			description: answer,
+		});
+		message.channel.send({ embeds: [searchEmbed] });
 	}
 }
 
@@ -269,30 +285,45 @@ function sendResults(message: Message, items:
  * @param {string | null} link - link to play on spotify
  * @param {boolean} transfer - passthrough if playback needs to be transfered
  * @param {SpotifyWebApi} spotifyAPI - passthrough spotify API instance
- * @param {opus.Decoder} opusStream - passthrough opus stream
+ * @param {AudioPlayer} player - passthrough audio player
  */
 function initializePlayback(message: Message, link: string | null,
 	transfer: boolean, spotifyAPI: SpotifyWebApi,
-	opusStream: opus.Encoder) {
+	player: AudioPlayer) {
+	if (!message.guildId || !message.guild) {
+		// DMs are already catched prior
+		return;
+	}
 	// check if already in channel
-	if (message.guild?.voice?.connection) {
-		if (message.guild.voice.channelID === message.member?.voice.channelID) {
-			playSpotify(message, link, transfer, message.guild.voice.connection,
-				true, spotifyAPI, opusStream);
+	const connection = getVoiceConnection(message.guildId);
+	if (connection) {
+		// TODO decide if feature in or out
+		/*
+		if (message.guild.me.voice.channelId ===
+			message.member?.voice.channelId) {
+			playSpotify(message, link, transfer,
+				message.guild.me.voice.connection, true, spotifyAPI, player);
 		}
 		else {
-			message.channel.send(embed.setDescription("Please join the bot's voice channel first."));
+			message.reply("please join the bot's voice channel first!");
 		}
+		*/
+		playSpotify(message, link, transfer, connection, true, spotifyAPI,
+			player);
 	}
 	// if not then join the channel and create connection
-	// we already tested earlier that message.member has a voiceChannel
 	else {
-		message.member?.voice?.channel?.join().then(
-			(connection) => {
-				playSpotify(message, link, transfer, connection, false,
-					spotifyAPI, opusStream);
-			},
-		);
+		if (!message.member?.voice?.channelId) {
+			// we already tested earlier that message.member has a voiceChannel
+			return;
+		}
+		const connection = joinVoiceChannel({
+			channelId: message.member.voice.channelId,
+			guildId: message.guildId,
+			adapterCreator: message.guild.voiceAdapterCreator,
+		});
+		playSpotify(message, link, transfer, connection, false, spotifyAPI,
+			player);
 	}
 }
 
@@ -304,11 +335,13 @@ function initializePlayback(message: Message, link: string | null,
  * @param {VoiceConnection} connection - voiceConnection of bot to play audio to Discord
  * @param {boolean} alreadyConnected - if true, we don't need a new dispatcher because audio stream is already connected
  * @param {SpotifyWebApi} spotifyAPI - Spotify API instance
- * @param {opus.Encoder} opusStream - opus stream
+ * @param {AudioPlayer} player - passthrough audio player
  */
 function playSpotify(message: Message, link: string | null, transfer: boolean,
 	connection: VoiceConnection, alreadyConnected: boolean,
-	spotifyAPI: SpotifyWebApi, opusStream: opus.Encoder) {
+	spotifyAPI: SpotifyWebApi, player: AudioPlayer) {
+	const playbackErrorEmbed = errorEmbed.setDescription("Playback could not be started.");
+
 	// start playing specified URL on librespot device
 	if (link) {
 		spotifyAPI.play(
@@ -318,12 +351,12 @@ function playSpotify(message: Message, link: string | null, transfer: boolean,
 			},
 		).then(
 			function() {
-				play(message, connection, opusStream);
+				play(message, connection, player);
 				message.react("▶️");
 			},
 			function(error) {
-				console.error("--- ERROR STARTING SPOTIFY PLAYBACK ---\n", error);
-				message.channel.send(embed.setDescription("Playback could not be started. Please try again later."));
+				console.error("ERROR: play (link)", error);
+				message.channel.send({ embeds: [playbackErrorEmbed] });
 			},
 		);
 	}
@@ -332,12 +365,12 @@ function playSpotify(message: Message, link: string | null, transfer: boolean,
 		spotifyAPI.transferMyPlayback([DEVICE_ID],
 			{ play: true }).then(
 			function() {
-				play(message, connection, opusStream);
+				play(message, connection, player);
 				message.react("▶️");
 			},
 			function(error) {
-				console.error("--- ERROR STARTING SPOTIFY PLAYBACK ---\n", error);
-				message.channel.send(embed.setDescription("Playback could not be started. Please try again later."));
+				console.error("ERROR: transferMyPlayback", error);
+				message.channel.send({ embeds: [playbackErrorEmbed] });
 			},
 		);
 	}
@@ -349,13 +382,13 @@ function playSpotify(message: Message, link: string | null, transfer: boolean,
 		).then(
 			function() {
 				if (!alreadyConnected) {
-					play(message, connection, opusStream);
+					play(message, connection, player);
 				}
 				message.react("▶️");
 			},
 			function(error) {
-				console.error("--- ERROR STARTING SPOTIFY PLAYBACK ---\n", error);
-				message.channel.send(embed.setDescription("Playback could not be started. Please try again later."));
+				console.error("ERROR: play", error);
+				message.channel.send({ embeds: [playbackErrorEmbed] });
 			},
 		);
 	}
@@ -365,32 +398,11 @@ function playSpotify(message: Message, link: string | null, transfer: boolean,
  * Connect Audio from spotify output to discord connection
  * @param {Message} message - message for context
  * @param {VoiceConnection} connection - voiceConnction to play audio
- * @param {opus.Encoder} opusStream - opus stream
+ * @param {AudioPlayer} player - passthrough audio player
  */
 function play(message: Message, connection: VoiceConnection,
-	opusStream: opus.Encoder) {
-	const dispatcher = connection.play(opusStream, { type: "opus", highWaterMark: 3 });
-
-	// TODO check if dispatcher is already playing, handle accordingly
-
-	dispatcher.on("start", () => {
-		opusStream.resume();
-		console.log("Stream started");
-	});
-
-	dispatcher.on("error", (error) => {
-		console.error("Dispatcher error\n", error);
-	});
-
-	dispatcher.on("finish", () => {
-		opusStream.pause();
-		console.log("Stream finished.");
-	});
-
-	dispatcher.on("close", () => {
-		opusStream.pause();
-		console.log("Stream closed.");
-	});
+	player: AudioPlayer) {
+	connection.subscribe(player);
 }
 
 /**
@@ -399,6 +411,7 @@ function play(message: Message, connection: VoiceConnection,
  * @return {boolean} true if link is valid Spotify link
  */
 function isSpotifyLink(link: string): boolean {
+	// TODO REGEX!!
 	if (link.startsWith("https://open.spotify.com/") || link.startsWith("spotify:")) {
 		return true;
 	}

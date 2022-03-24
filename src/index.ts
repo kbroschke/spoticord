@@ -2,17 +2,18 @@ console.log("Loading libraries...");
 import { readdirSync, writeFileSync } from "fs";
 import { spawn } from "child_process";
 import { Client, Collection, Intents } from "discord.js";
+import { createAudioPlayer, NoSubscriberBehavior, createAudioResource, StreamType } from "@discordjs/voice";
 import SpotifyWebApi from "spotify-web-api-node";
 import { FFmpeg, opus } from "prism-media";
 import refreshSpotifyToken from "./refreshSpotifyToken";
 import discordConfig from "../config/discord.json";
 import spotifyConfig from "../config/spotify.json";
-import { ClientCommands } from "ClientCommands";
 import strings from "./strings.js";
+
+import type { Command, CommandClient } from "types/command";
 
 // load discord config
 console.log("Checking discord config...");
-
 if (discordConfig.BOT_TOKEN) {
 	console.log("Complete!");
 }
@@ -35,6 +36,8 @@ else {
 	process.exit();
 }
 
+// initialize globals
+console.log("Initiliazing spotify API...");
 const spotifyAPI = new SpotifyWebApi({
 	clientId: spotifyConfig.CLIENT_ID,
 	clientSecret: spotifyConfig.CLIENT_SECRET,
@@ -44,33 +47,22 @@ const spotifyAPI = new SpotifyWebApi({
 console.log("Initiliazing discord client...");
 const client = new Client({ intents:
 	[
+		Intents.FLAGS.GUILDS,
 		Intents.FLAGS.DIRECT_MESSAGES,
 		Intents.FLAGS.GUILD_MESSAGES,
 		Intents.FLAGS.GUILD_VOICE_STATES,
 	],
-}) as Client & ClientCommands;
-
+}) as CommandClient;
 client.commands = new Collection();
 
-const commandFiles = readdirSync("./src/commands").filter((file) => file.endsWith(".js"));
-const eventFilesDiscord = readdirSync("./src/events/discord").filter((file) => file.endsWith(".js"));
-const eventFilesLibrespot = readdirSync("./src/events/librespot").filter((file) => file.endsWith(".js"));
-const eventFilesProcess = readdirSync("./src/events/process").filter((file) => file.endsWith(".js"));
-
-for (const file of commandFiles) {
-	const command = require(`./commands/${file}`);
-	client.commands.set(command.name, command);
-}
-
 console.log("Initializing librespot...");
-
 // random 4 digit number to identify client in Spotify
-const librespotId = Math.floor(1000 + Math.random() * 9000);
-
+// const librespotId = Math.floor(1000 + Math.random() * 9000);
 const librespot = spawn(
 	"./lib/librespot",
 	[
-		"-n", `Spoticord#${librespotId}`,
+		// "-n", `Spoticord#${librespotId}`,
+		"-n", "Spoticord",
 		"--device-type", "computer",
 		"-b", "320",
 		"-u", spotifyConfig.USERNAME,
@@ -84,10 +76,18 @@ const librespot = spawn(
 		"--format", "S16",
 		// "-v", // verbose debug logs
 	],
-	{ stdio: "pipe" });
-
+	{ stdio: "pipe" },
+);
 // output librespot debug and error logs in console
 librespot.stderr.pipe(process.stdout);
+
+console.log("Initializing audio player...");
+const player = createAudioPlayer({
+	behaviors: { noSubscriber: NoSubscriberBehavior.Play },
+});
+player.on("error", (error) => {
+	console.error("ERROR: player error", error);
+});
 
 // FFmpeg instance to resample from Spotify's 44100Hz to Discord's/Opus' 48000Hz
 const resampler = new FFmpeg({
@@ -105,7 +105,6 @@ const resampler = new FFmpeg({
 		"-af", "aresample=resampler=soxr",
 	], shell: true,
 });
-
 resampler.on("error", (error) => {
 	console.error(error);
 });
@@ -119,35 +118,73 @@ opusEncoder.on("error", (error) => {
 });
 
 // create pipeline
-librespot.stdout.pipe(resampler).pipe(opusEncoder);
+librespot.stdout.pipe(resampler);
+// .pipe(opusEncoder);
+
+const resource = createAudioResource(resampler, {
+	inputType: StreamType.Raw,
+});
+
+player.play(resource);
+
+// load commands and events
+const commandFiles = readdirSync("./src/commands").filter((file) => file.endsWith(".js"));
+const eventFilesDiscord = readdirSync("./src/events/discord").filter((file) => file.endsWith(".js"));
+const eventFilesLibrespot = readdirSync("./src/events/librespot").filter((file) => file.endsWith(".js"));
+const eventFilesProcess = readdirSync("./src/events/process").filter((file) => file.endsWith(".js"));
+
+for (const file of commandFiles) {
+	const command: Command = require(`./commands/${file}`);
+	client.commands.set(command.name, command);
+	console.log(`Registered command: '${command.name}'`);
+}
 
 // events from discord client
 for (const file of eventFilesDiscord) {
-	const event = require(`./events/discord/${file}`);
+	const event: Command = require(`./events/discord/${file}`);
 	if (event.once) {
 		client.once(event.name,
-			(...args) => event.execute(...args, client, spotifyAPI,
-				opusEncoder));
+			(...args) => {
+				console.log("EVENT: discord client (once)", event.name);
+				event.execute(...args, client, spotifyAPI, player);
+			},
+		);
+		console.log(
+			`Registered discord client (once) event: '${event.name}'`);
 	}
 	else {
 		client.on(event.name,
-			(...args) => event.execute(...args, client, spotifyAPI,
-				opusEncoder));
+			(...args) => {
+				console.log("EVENT: discord client (on)", event.name);
+				event.execute(...args, client, spotifyAPI, player);
+			},
+		);
+		console.log(`Registered discord client (on) event: '${event.name}'`);
 	}
 }
 
 // event from child_process librespot
 for (const file of eventFilesLibrespot) {
-	const event = require(`./events/librespot/${file}`);
+	const event: Command = require(`./events/librespot/${file}`);
 	librespot.on(event.name,
-		(...args) => event.execute(...args));
+		(...args) => {
+			console.log("EVENT: librespot child_process", event.name);
+			event.execute(...args);
+		},
+	);
+	console.log(`Registered librespot event: '${event.name}'`);
 }
 
 // events from process
 for (const file of eventFilesProcess) {
-	const event = require(`./events/process/${file}`);
+	const event: Command = require(`./events/process/${file}`);
 	process.on(event.name,
-		(...args) => event.execute(...args, client, librespot));
+		(...args) => {
+			console.log("EVENT: process", event.name);
+			event.execute(...args, client, librespot, player);
+		},
+	);
+	console.log(`Registered process event: '${event.name}'`);
 }
 
 // every spotify access_token is valid for 3600 sec (60min)
@@ -175,7 +212,8 @@ function handleRefreshedSpotifyToken() {
 					const devices = response.body.devices;
 					let deviceNotFound = true;
 					devices.forEach((element) => {
-						if (element.name === `Spoticord#${librespotId}`) {
+						// if (element.name === `Spoticord#${librespotId}`) {
+						if (element.name === "Spoticord") {
 							if (element.id) {
 								const spotifyConfigWithId = spotifyConfig;
 								spotifyConfigWithId.DEVICE_ID = element.id;

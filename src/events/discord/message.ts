@@ -1,15 +1,15 @@
-import { ClientCommands } from "ClientCommands";
-import { Client, Message } from "discord.js";
+import { Message } from "discord.js";
 import SpotifyWebApi from "spotify-web-api-node";
-import { opus } from "prism-media";
+import { AudioPlayer } from "@discordjs/voice";
+import { CommandClient } from "types/command";
 
 const prefixes = require("../../../config/prefixes.json");
 
 module.exports = {
 	name: "message",
 	execute(message: Message,
-		client: Client & ClientCommands, spotifyAPI: SpotifyWebApi,
-		opusStream: opus.Encoder) {
+		client: CommandClient, spotifyAPI: SpotifyWebApi,
+		player: AudioPlayer) {
 		// dont react to other Bots
 		if (message.author.bot) return;
 
@@ -42,6 +42,7 @@ module.exports = {
 			commandFull = message.content.slice(prefix.length);
 		}
 		else if (client.user && message.mentions.has(client.user)) {
+			// TODO regex pattern (see To Do)
 			// remove mention from front (no regrets :D  -> idea for smarter filter: mentions includes message.author.id )
 			commandFull = message.content.slice(client.user.id.length + 4);
 		}
@@ -60,10 +61,11 @@ module.exports = {
 		if (!commandModule) return;
 
 		try {
-			commandModule.execute(message, args, spotifyAPI, opusStream);
+			commandModule.execute(message, args, spotifyAPI, player);
 		}
 		catch (error) {
 			console.error(error);
+			// TODO error embed
 			message.reply("there was an error trying to execute that command!");
 		}
 	},
