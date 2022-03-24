@@ -1,5 +1,5 @@
 console.log("Loading libraries...");
-import fs from "fs";
+import { writeFileSync } from "fs";
 import SpotifyWebApi from "spotify-web-api-node";
 import strings from "../src/strings";
 import discordConfig from "../config/discord.json";
@@ -38,7 +38,7 @@ if (spotifyConfig.CLIENT_ID &&
 		spotifyAPI.authorizationCodeGrant(spotifyConfig.AUTH_CODE).then(
 			function(data) {
 				spotifyConfig.REFRESH_TOKEN = data.body["refresh_token"];
-				fs.writeFileSync("./config/spotify.json",
+				writeFileSync("./config/spotify.json",
 					JSON.stringify(spotifyConfig, null, 4));
 				console.log("Successfully updated refresh token!");
 				testLogin(spotifyAPI);

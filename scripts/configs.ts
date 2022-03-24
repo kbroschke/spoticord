@@ -1,10 +1,10 @@
-import fs from "fs";
+import { existsSync, mkdirSync, writeFileSync } from "fs";
 import strings from "../src/strings";
 
 console.log("Creating config folder...");
 // create config dir if not exists
-if (!fs.existsSync("./config")) {
-	fs.mkdirSync("./config");
+if (!existsSync("./config")) {
+	mkdirSync("./config");
 }
 
 // save empty discord config
@@ -12,7 +12,7 @@ console.log("Creating empty discord config file...");
 const defaultConfigDiscord = {
 	"BOT_TOKEN": "",
 };
-fs.writeFileSync(
+writeFileSync(
 	"./config/discord.json",
 	JSON.stringify(defaultConfigDiscord, null, 4),
 );
@@ -29,11 +29,11 @@ const defaultConfigSpotify = {
 	"PASSWORD": "",
 	"DEVICE_ID": "",
 };
-fs.writeFileSync("./config/spotify.json",
+writeFileSync("./config/spotify.json",
 	JSON.stringify(defaultConfigSpotify, null, 4));
 console.log(strings.spotify.configNotFound);
 
 // make sure proper empty prefix-file exists
-if (!fs.existsSync("./config/prefixes.json")) {
-	fs.writeFileSync("./config/prefixes.json", "{}");
+if (!existsSync("./config/prefixes.json")) {
+	writeFileSync("./config/prefixes.json", "{}");
 }
