@@ -1,15 +1,14 @@
 import https from "https";
-import querystring from "querystring";
 import spotifyConfig from "../config/spotify.json";
 
 export default {
 	name: "refreshSpotifyToken",
 	execute: async (): Promise<string> => {
 		console.log("Refreshing Spotify's Access Token...");
-		const data = querystring.stringify({
+		const data = new URLSearchParams({
 			"grant_type": "refresh_token",
 			"refresh_token": spotifyConfig.REFRESH_TOKEN,
-		});
+		}).toString();
 		const auth = "Basic " + Buffer.from(`${spotifyConfig.CLIENT_ID}:${spotifyConfig.CLIENT_SECRET}`).toString("base64");
 		const options = {
 			hostname: "accounts.spotify.com",
