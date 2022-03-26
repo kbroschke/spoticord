@@ -5,4 +5,4 @@ export interface Event {
     },
     execute: (...any: any) => void,
     once: boolean,
-};
+}
