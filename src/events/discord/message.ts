@@ -1,9 +1,7 @@
 import { Message } from "discord.js";
 import SpotifyWebApi from "spotify-web-api-node";
 import { AudioPlayer } from "@discordjs/voice";
-import { CommandClient } from "types/command";
-
-const prefixes = require("../../../config/prefixes.json");
+import type { CommandClient } from "types/command";
 
 module.exports = {
 	name: "message",
@@ -14,8 +12,9 @@ module.exports = {
 		if (message.author.bot) return;
 
 		// get prefix from json values
-		let prefix;
+		const prefix = "$";
 		if (message.guild) {
+			/*
 			if (message.guild.id in prefixes) {
 				prefix = prefixes[message.guild.id];
 			}
@@ -23,6 +22,7 @@ module.exports = {
 				// default to this prefix
 				prefix = "$";
 			}
+			*/
 		}
 		else {
 			// if guild is null then it's a DM
@@ -61,7 +61,7 @@ module.exports = {
 		if (!commandModule) return;
 
 		try {
-			commandModule.execute(message, args, spotifyAPI, player);
+			// commandModule.execute(message, args, spotifyAPI, player);
 		}
 		catch (error) {
 			console.error(error);
