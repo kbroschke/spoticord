@@ -24,7 +24,7 @@ module.exports = {
 				console.error("Librespot is not responding, exiting!");
 				librespot.kill();
 				process.exit(1);
-			}, 5000);
+			}, 5_000);
 		}
 		else {
 			// something went wrong with the librespot child process

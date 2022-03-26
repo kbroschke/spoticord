@@ -108,7 +108,7 @@ resampler.on("error", (error) => {
 
 // encode resampled PCM-data into opus packets
 const opusEncoder = new opus.Encoder(
-	{ frameSize: 480, channels: 2, rate: 48000 });
+	{ frameSize: 480, channels: 2, rate: 48_000 });
 
 opusEncoder.on("error", (error) => {
 	console.error(error);
@@ -187,7 +187,7 @@ for (const file of eventFilesProcess) {
 
 // every spotify access_token is valid for 3600 sec (60min)
 // setInterval: refresh the access_token every ~50min
-setInterval(handleRefreshedSpotifyToken, 3000000);
+setInterval(handleRefreshedSpotifyToken, 3_000_000);
 // call it for first time, so we have access right away and not in 50 min...
 handleRefreshedSpotifyToken();
 
@@ -223,7 +223,7 @@ function handleRefreshedSpotifyToken() {
 					if (deviceNotFound) {
 						// try again in 5 sec
 						console.log("Did not find Librespot device in Spotify. Trying again in 5 sec.");
-						setTimeout(handleRefreshedSpotifyToken, 5000);
+						setTimeout(handleRefreshedSpotifyToken, 5_000);
 
 						// make not constant 5 sec but fibonacci numbers until too much then call
 						// console.error("Librespot client was not found, exiting!"); and
@@ -240,7 +240,7 @@ function handleRefreshedSpotifyToken() {
 		},
 		() => {
 			// try again after 5 Minutes
-			setTimeout(handleRefreshedSpotifyToken, 300000);
+			setTimeout(handleRefreshedSpotifyToken, 300_000);
 		},
 	);
 }

@@ -92,7 +92,7 @@ module.exports = {
  * @return {string[]} Array of minutes and seconds as strings
  */
 function msToMMSS(progressMS: number): string[] {
-	let progressInS = Math.floor(progressMS / 1000);
+	let progressInS = Math.floor(progressMS / 1_000);
 	const progressInM = Math.floor(progressInS / 60);
 	progressInS = progressInS % 60;
 
