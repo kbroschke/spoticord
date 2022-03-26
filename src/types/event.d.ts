@@ -1,8 +1,5 @@
 export interface Event {
-    data: {
-        name: string,
-        description: string
-    },
+    name: string,
+    once?: boolean,
     execute: (...any: any) => void,
-    once: boolean,
 }

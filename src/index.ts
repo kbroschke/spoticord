@@ -140,49 +140,49 @@ for (const file of commandFiles) {
 for (const file of eventFilesDiscord) {
 	const event: Event = require(`./events/discord/${file}`);
 	if (event.once) {
-		client.once(event.data.name,
+		client.once(event.name,
 			async (...args) => {
-				console.log("EVENT: discord client (once)", event.data.name);
+				console.log("EVENT: discord client (once)", event.name);
 				event.execute(...args, client, spotifyAPI, player);
 			},
 		);
 		console.log(
-			`Registered discord client (once) event: '${event.data.name}'`);
+			`Registered discord client (once) event: '${event.name}'`);
 	}
 	else {
-		client.on(event.data.name,
+		client.on(event.name,
 			async (...args) => {
-				console.log("EVENT: discord client (on)", event.data.name);
+				console.log("EVENT: discord client (on)", event.name);
 				event.execute(...args, client, spotifyAPI, player);
 			},
 		);
 		console.log(
-			`Registered discord client (on) event: '${event.data.name}'`);
+			`Registered discord client (on) event: '${event.name}'`);
 	}
 }
 
 // event from child_process librespot
 for (const file of eventFilesLibrespot) {
 	const event: Event = require(`./events/librespot/${file}`);
-	librespot.on(event.data.name,
+	librespot.on(event.name,
 		async (...args) => {
-			console.log("EVENT: librespot child_process", event.data.name);
+			console.log("EVENT: librespot child_process", event.name);
 			event.execute(...args);
 		},
 	);
-	console.log(`Registered librespot event: '${event.data.name}'`);
+	console.log(`Registered librespot event: '${event.name}'`);
 }
 
 // events from process
 for (const file of eventFilesProcess) {
 	const event: Event = require(`./events/process/${file}`);
-	process.on(event.data.name,
+	process.on(event.name,
 		async (...args) => {
-			console.log("EVENT: process", event.data.name);
+			console.log("EVENT: process", event.name);
 			event.execute(...args, client, librespot, player);
 		},
 	);
-	console.log(`Registered process event: '${event.data.name}'`);
+	console.log(`Registered process event: '${event.name}'`);
 }
 
 // every spotify access_token is valid for 3600 sec (60min)
