@@ -1,49 +1,50 @@
-import { Message, MessageEmbed } from "discord.js";
+import { CommandInteraction, MessageEmbed } from "discord.js";
+import { SlashCommandBuilder } from "@discordjs/builders";
 import SpotifyWebApi from "spotify-web-api-node";
 import { DEVICE_ID } from "../../config/spotify.json";
+import type { Command } from "types/command";
 
 module.exports = {
-	name: "repeat",
-	description: "Sets repeat mode. Possible values are `track`, `context` and `off`. If no argument is given it shows all available modes.",
-	execute(message: Message, args: string[], spotifyAPI: SpotifyWebApi) {
-		const modes = ["track", "context", "off"];
+	data: new SlashCommandBuilder()
+		.setName("repeat")
+		.setDescription("Set repeat mode.")
+		.addStringOption((option) => {
+			return option
+				.setName("mode")
+				.setDescription("Set repeat mode to off, track or context.")
+				.setRequired(true)
+				.addChoice("off", "off")
+				.addChoice("track", "track")
+				.addChoice("context", "context");
+		}),
+	execute(interaction: CommandInteraction, spotifyAPI: SpotifyWebApi) {
 		type RepeatState = Parameters<SpotifyWebApi["setRepeat"]>[0];
 
-		const isOfTypeRepeatState =
-			(userInput: string): userInput is RepeatState => {
-				return modes.includes(userInput);
-			};
+		const repeat = interaction.options.getString("mode", true) as RepeatState;
 
-		if (!args.length || !isOfTypeRepeatState(args[0])) {
-			const embed = new MessageEmbed({
-				color: "#f0463a",
-				description: "Possible arguments: `track`, `context` or `off`.",
-			});
-			message.channel.send({ embeds: [embed] });
-			return;
-		}
-
-		spotifyAPI.setRepeat(args[0], { "device_id": DEVICE_ID }).then(
+		spotifyAPI.setRepeat(repeat, { "device_id": DEVICE_ID }).then(
 			function() {
-				message.react("👌");
+				const embed = new MessageEmbed({
+					color: "#1DB954",
+					description: "👌",
+				});
+				interaction.reply({ embeds: [embed] });
 			},
 			function(error) {
 				// TODO catch nothings playing
 				const embed = new MessageEmbed({
 					color: "#f0463a",
 				});
-				message.channel.send({ embeds: [embed] });
 
 				if (error.toString().includes("NO_ACTIVE_DEVICE")) {
 					embed.setDescription("Nothing's currently playing.");
-					message.channel.send({ embeds: [embed] });
 				}
 				else {
 					console.error("ERROR: setRepeat", error);
 					embed.setDescription("Repeat mode could not be changed. Please try again later.");
-					message.channel.send({ embeds: [embed] });
 				}
+				interaction.reply({ embeds: [embed] });
 			},
 		);
 	},
-};
+} as Command;

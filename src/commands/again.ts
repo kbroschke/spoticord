@@ -1,14 +1,21 @@
-import { Message, MessageEmbed } from "discord.js";
+import { SlashCommandBuilder } from "@discordjs/builders";
+import { CommandInteraction, MessageEmbed } from "discord.js";
 import SpotifyWebApi from "spotify-web-api-node";
 import { DEVICE_ID } from "../../config/spotify.json";
+import type { Command } from "types/command";
 
 module.exports = {
-	name: "again",
-	description: "Skip to previously played track.",
-	execute(message: Message, args: string[], spotifyAPI: SpotifyWebApi) {
+	data: new SlashCommandBuilder()
+		.setName("again")
+		.setDescription("Play previously played track again."),
+	async execute(interaction: CommandInteraction, spotifyAPI: SpotifyWebApi) {
 		spotifyAPI.skipToPrevious({ "device_id": DEVICE_ID }).then(
 			function() {
-				message.react("⏮️");
+				const embed = new MessageEmbed({
+					color: "#1DB954",
+					description: "⏮️",
+				});
+				interaction.reply({ embeds: [embed] });
 			},
 			function(error) {
 				console.error("Skip previous error", error);
@@ -16,9 +23,9 @@ module.exports = {
 					color: "#f0463a",
 					description: "Could not skip to previous track.",
 				});
-				message.channel.send({ embeds: [embed] });
+				interaction.reply({ embeds: [embed] });
 				// TODO catch nothings playing
 			},
 		);
 	},
-};
+} as Command;

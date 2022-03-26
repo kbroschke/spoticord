@@ -1,14 +1,22 @@
-import { Message, MessageEmbed } from "discord.js";
+import { CommandInteraction, MessageEmbed } from "discord.js";
+import { SlashCommandBuilder } from "@discordjs/builders";
 import SpotifyWebApi from "spotify-web-api-node";
 import { DEVICE_ID } from "../../config/spotify.json";
+import type { Command } from "types/command";
+
 
 module.exports = {
-	name: "pause",
-	description: "Pauses Spotify playback.",
-	execute(message: Message, args: string[], spotifyAPI: SpotifyWebApi) {
+	data: new SlashCommandBuilder()
+		.setName("pause")
+		.setDescription("Pause spotify playback."),
+	execute(interaction: CommandInteraction, spotifyAPI: SpotifyWebApi) {
 		spotifyAPI.pause({ "device_id": DEVICE_ID }).then(
 			function() {
-				message.react("⏸️");
+				const embed = new MessageEmbed({
+					color: "#1DB954",
+					description: "⏸️",
+				});
+				interaction.reply({ embeds: [embed] });
 			},
 			function(error) {
 				console.error("ERROR: pause", error);
@@ -16,9 +24,9 @@ module.exports = {
 					color: "#f0463a",
 					description: "Playback could not be paused.",
 				});
-				message.channel.send({ embeds: [embed] });
+				interaction.reply({ embeds: [embed] });
 				// TODO catch nothings playing
 			},
 		);
 	},
-};
+} as Command;

@@ -1,29 +1,32 @@
-import { Message, MessageEmbed } from "discord.js";
+import { SlashCommandBuilder } from "@discordjs/builders";
+import { CommandInteraction, MessageEmbed } from "discord.js";
 import SpotifyWebApi from "spotify-web-api-node";
 import { DEVICE_ID } from "../../config/spotify.json";
+import type { Command } from "types/command";
 
 module.exports = {
-	name: "shuffle",
-	description: "Sets shuffle mode. Possible values are `on` and `off`. If no argument is given it shows all available modes.",
-	execute(message: Message, args: string[], spotifyAPI: SpotifyWebApi) {
-		const modes = ["on", "off"];
-		if (!args.length || !modes.includes(args[0])) {
-			const embed = new MessageEmbed({
-				color: "#f0463a",
-				description: "Possible arguments: `on` or `off`.",
-			});
-			message.channel.send({ embeds: [embed] });
-			return;
-		}
-
-		let shuffleMode = false;
-		if (args[0] === "on") {
-			shuffleMode = true;
-		}
+	data: new SlashCommandBuilder()
+		.setName("shuffle")
+		.setDescription("Set shuffle mode.")
+		.addStringOption((option) => {
+			return option
+				.setName("mode")
+				.setDescription("Turn shuffle on or off.")
+				.setRequired(true)
+				.addChoice("on", "on")
+				.addChoice("off", "off");
+		}),
+	execute(interaction: CommandInteraction, spotifyAPI: SpotifyWebApi) {
+		const shuffle = interaction.options.getString("mode", true);
+		const shuffleMode = shuffle === "on";
 
 		spotifyAPI.setShuffle(shuffleMode, { "device_id": DEVICE_ID }).then(
 			function() {
-				message.react("👌");
+				const embed = new MessageEmbed({
+					color: "#1DB954",
+					description: "👌",
+				});
+				interaction.reply({ embeds: [embed] });
 			},
 			function(error) {
 				// TODO catch nothings playing
@@ -32,14 +35,14 @@ module.exports = {
 				});
 				if (error.toString().includes("NO_ACTIVE_DEVICE")) {
 					embed = embed.setDescription("Shuffle mode can only be changed when something is playing.");
-					message.channel.send({ embeds: [embed] });
+					interaction.reply({ embeds: [embed] });
 				}
 				else {
 					console.error("ERROR: setShuffle", error);
 					embed = embed.setDescription("Shuffle mode could not be changed.");
-					message.channel.send({ embeds: [embed] });
+					interaction.reply({ embeds: [embed] });
 				}
 			},
 		);
 	},
-};
+} as Command;

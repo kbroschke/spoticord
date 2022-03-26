@@ -1,21 +1,28 @@
+import { SlashCommandBuilder } from "@discordjs/builders";
 import { getVoiceConnection } from "@discordjs/voice";
-import { Message, MessageEmbed } from "discord.js";
+import { CommandInteraction, MessageEmbed } from "discord.js";
 import SpotifyWebApi from "spotify-web-api-node";
 import { DEVICE_ID } from "../../config/spotify.json";
+import { Command } from "types/command";
 
 module.exports = {
-	name: "stop",
-	description: "Disconnects from voice channel and pauses spotify playback if neccessary.",
-	execute(message: Message, args: string[], spotifyAPI: SpotifyWebApi) {
-		if (!message.guildId) {
+	data: new SlashCommandBuilder()
+		.setName("stop")
+		.setDescription("Disconnect from voice channel and pause spotify playback if neccessary."),
+	execute(interaction: CommandInteraction, spotifyAPI: SpotifyWebApi) {
+		if (!interaction.guildId) {
 			// that we're not a DM is already handeled in the message-event
 			return;
 		}
 
 		// disconnnect voice channel (if any)
-		getVoiceConnection(message.guildId)?.destroy();
+		getVoiceConnection(interaction.guildId)?.destroy();
 
-		message.react("👋");
+		const embed = new MessageEmbed({
+			color: "#1DB954",
+			description: "👋",
+		});
+		interaction.reply({ embeds: [embed], ephemeral: true });
 
 		// TODO remove this in favor of pausing in voiceStateUpdate?
 		spotifyAPI.pause({ "device_id": DEVICE_ID }).then(
@@ -28,9 +35,9 @@ module.exports = {
 					color: "#f0463a",
 					description: "Playback could not be paused.",
 				});
-				message.channel.send({ embeds: [embed] });
+				interaction.reply({ embeds: [embed] });
 				// TODO catch nothings playing
 			},
 		);
 	},
-};
+} as Command;

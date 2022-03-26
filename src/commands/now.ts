@@ -1,10 +1,13 @@
-import { Message, MessageEmbed } from "discord.js";
+import { SlashCommandBuilder } from "@discordjs/builders";
+import { CommandInteraction, MessageEmbed } from "discord.js";
 import SpotifyWebApi from "spotify-web-api-node";
+import type { Command } from "types/command";
 
 module.exports = {
-	name: "now",
-	description: "Shows info about currently playing track.",
-	execute(message: Message, args: string[], spotifyAPI: SpotifyWebApi) {
+	data: new SlashCommandBuilder()
+		.setName("now")
+		.setDescription("Show currently playing track."),
+	execute(interaction: CommandInteraction, spotifyAPI: SpotifyWebApi) {
 		spotifyAPI.getMyCurrentPlayingTrack().then(
 			function(data) {
 				const item = data.body.item;
@@ -70,18 +73,18 @@ module.exports = {
 						url: urlSong,
 					}).setThumbnail(coverIMG);
 
-					message.channel.send({ embeds: [embed] });
+					interaction.reply({ embeds: [embed] });
 				}
 				else {
-					sendNothingsPlaying(message);
+					sendNothingsPlaying(interaction);
 				}
 			}, function(error) {
 				console.error("ERROR: getMyCurrentPlayingTrack", error);
-				sendNothingsPlaying(message);
+				sendNothingsPlaying(interaction);
 			},
 		);
 	},
-};
+} as Command;
 
 /**
  * Converts number in milliseconds into respectable pair of minutes and seconds
@@ -103,13 +106,13 @@ function msToMMSS(progressMS: number): string[] {
 
 /**
  * Send message that nothing is currently playing
- * @param {Message} message - Send response in channel of this message
+ * @param {CommandInteraction} interaction - Send response as reply to command
  */
-function sendNothingsPlaying(message: Message) {
+function sendNothingsPlaying(interaction: CommandInteraction) {
 	const embed = new MessageEmbed({
 		color: "#f0463a",
 		description: "Nothing's currently playing.",
 	});
-	message.channel.send({ embeds: [embed] });
+	interaction.reply({ embeds: [embed] });
 	// TODO catch nothings playing
 }

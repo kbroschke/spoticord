@@ -1,15 +1,19 @@
-import { Message, MessageEmbed } from "discord.js";
+import { SlashCommandBuilder } from "@discordjs/builders";
+import { CommandInteraction, MessageEmbed } from "discord.js";
+import type { Command } from "types/command";
 
 module.exports = {
-	name: "ping",
-	description: "Shows bot latency.",
-	execute(message: Message) {
-		const timeTaken = Date.now() - message.createdTimestamp;
+	data: new SlashCommandBuilder()
+		.setName("ping")
+		.setDescription("Show bot latency."),
+	execute(interaction: CommandInteraction) {
+		const timeTaken = Date.now() - interaction.createdTimestamp;
 		const embed = new MessageEmbed({
 			title: "Pong!",
 			color: "#1DB954",
 			description: `\`${timeTaken} ms\``,
 		});
-		message.channel.send({ embeds: [embed] });
+		interaction.reply({ embeds: [embed] });
+		// TODO fetch reply for two-way latency
 	},
-};
+} as Command;

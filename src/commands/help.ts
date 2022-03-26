@@ -1,22 +1,13 @@
-import { Message, MessageEmbed } from "discord.js";
-const prefixes = require("../../config/prefixes.json");
+import { SlashCommandBuilder } from "@discordjs/builders";
+import { CommandInteraction, MessageEmbed } from "discord.js";
+import type { Command } from "types/command";
 
 module.exports = {
-	name: "help",
-	description: "Shows all available commands.",
-	execute(message: Message) {
-		let prefix;
-		if (!message.guild) {return;}
-		if (message.guild.id in prefixes) {
-			prefix = prefixes[message.guild.id];
-		}
-		else {
-			prefix = "$";
-		}
-
-		if (prefix.length > 3) {
-			prefix += " ";
-		}
+	data: new SlashCommandBuilder()
+		.setName("help")
+		.setDescription("Show all available commands."),
+	execute(interaction: CommandInteraction) {
+		const prefix = "/";
 
 		const embed = new MessageEmbed({
 			title: "Command list & explanations",
@@ -63,7 +54,7 @@ module.exports = {
 				"",
 		});
 
-		message.channel.send({ embeds: [embed] });
+		interaction.reply({ embeds: [embed] });
 		// not listed: help
 	},
-};
+} as Command;
