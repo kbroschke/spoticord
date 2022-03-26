@@ -3,7 +3,7 @@ import { getVoiceConnection } from "@discordjs/voice";
 import { CommandInteraction, MessageEmbed } from "discord.js";
 import SpotifyWebApi from "spotify-web-api-node";
 import { DEVICE_ID } from "../../config/spotify.json";
-import emojiCharacters from "emojiCharacters";
+import emojiCharacters from "../emojiCharacters";
 import { Command } from "types/command";
 
 module.exports = {
