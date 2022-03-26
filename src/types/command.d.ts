@@ -1,10 +1,9 @@
+import { SlashCommandBuilder } from "@discordjs/builders";
 import { Client, Collection } from "discord.js";
 
 export interface Command {
-    name: string,
-    description: string,
+    data: SlashCommandBuilder,
     execute: (...any: any) => void,
-    once?: boolean,
 };
 export type ClientCommands = { commands: Collection<String, Command> };
 export type CommandClient = Client & ClientCommands;

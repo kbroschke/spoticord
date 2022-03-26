@@ -9,8 +9,8 @@ import refreshSpotifyToken from "./refreshSpotifyToken";
 import discordConfig from "../config/discord.json";
 import spotifyConfig from "../config/spotify.json";
 import strings from "./strings.js";
-
 import type { Command, CommandClient } from "types/command";
+import type { Event } from "types/event";
 
 // load discord config
 console.log("Checking discord config...");
@@ -56,12 +56,9 @@ const client = new Client({ intents:
 client.commands = new Collection();
 
 console.log("Initializing librespot...");
-// random 4 digit number to identify client in Spotify
-// const librespotId = Math.floor(1000 + Math.random() * 9000);
 const librespot = spawn(
 	"./lib/librespot",
 	[
-		// "-n", `Spoticord#${librespotId}`,
 		"-n", "Spoticord",
 		"--device-type", "computer",
 		"-b", "320",
@@ -135,56 +132,57 @@ const eventFilesProcess = readdirSync("./src/events/process").filter((file) => f
 
 for (const file of commandFiles) {
 	const command: Command = require(`./commands/${file}`);
-	client.commands.set(command.name, command);
-	console.log(`Registered command: '${command.name}'`);
+	client.commands.set(command.data.name, command);
+	console.log(`Registered command: '${command.data.name}'`);
 }
 
 // events from discord client
 for (const file of eventFilesDiscord) {
-	const event: Command = require(`./events/discord/${file}`);
+	const event: Event = require(`./events/discord/${file}`);
 	if (event.once) {
-		client.once(event.name,
-			(...args) => {
-				console.log("EVENT: discord client (once)", event.name);
+		client.once(event.data.name,
+			async (...args) => {
+				console.log("EVENT: discord client (once)", event.data.name);
 				event.execute(...args, client, spotifyAPI, player);
 			},
 		);
 		console.log(
-			`Registered discord client (once) event: '${event.name}'`);
+			`Registered discord client (once) event: '${event.data.name}'`);
 	}
 	else {
-		client.on(event.name,
-			(...args) => {
-				console.log("EVENT: discord client (on)", event.name);
+		client.on(event.data.name,
+			async (...args) => {
+				console.log("EVENT: discord client (on)", event.data.name);
 				event.execute(...args, client, spotifyAPI, player);
 			},
 		);
-		console.log(`Registered discord client (on) event: '${event.name}'`);
+		console.log(
+			`Registered discord client (on) event: '${event.data.name}'`);
 	}
 }
 
 // event from child_process librespot
 for (const file of eventFilesLibrespot) {
-	const event: Command = require(`./events/librespot/${file}`);
-	librespot.on(event.name,
-		(...args) => {
-			console.log("EVENT: librespot child_process", event.name);
+	const event: Event = require(`./events/librespot/${file}`);
+	librespot.on(event.data.name,
+		async (...args) => {
+			console.log("EVENT: librespot child_process", event.data.name);
 			event.execute(...args);
 		},
 	);
-	console.log(`Registered librespot event: '${event.name}'`);
+	console.log(`Registered librespot event: '${event.data.name}'`);
 }
 
 // events from process
 for (const file of eventFilesProcess) {
-	const event: Command = require(`./events/process/${file}`);
-	process.on(event.name,
-		(...args) => {
-			console.log("EVENT: process", event.name);
+	const event: Event = require(`./events/process/${file}`);
+	process.on(event.data.name,
+		async (...args) => {
+			console.log("EVENT: process", event.data.name);
 			event.execute(...args, client, librespot, player);
 		},
 	);
-	console.log(`Registered process event: '${event.name}'`);
+	console.log(`Registered process event: '${event.data.name}'`);
 }
 
 // every spotify access_token is valid for 3600 sec (60min)
@@ -212,7 +210,6 @@ function handleRefreshedSpotifyToken() {
 					const devices = response.body.devices;
 					let deviceNotFound = true;
 					devices.forEach((element) => {
-						// if (element.name === `Spoticord#${librespotId}`) {
 						if (element.name === "Spoticord") {
 							if (element.id) {
 								const spotifyConfigWithId = spotifyConfig;
