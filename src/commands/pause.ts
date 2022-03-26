@@ -14,7 +14,7 @@ module.exports = {
 			function() {
 				const embed = new MessageEmbed({
 					color: "#1DB954",
-					description: "⏸️",
+					description: ":pause_button:",
 				});
 				interaction.reply({ embeds: [embed] });
 			},

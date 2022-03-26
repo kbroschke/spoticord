@@ -20,7 +20,7 @@ module.exports = {
 
 		const embed = new MessageEmbed({
 			color: "#1DB954",
-			description: "👋",
+			description: ":wave:",
 		});
 		interaction.reply({ embeds: [embed], ephemeral: true });
 

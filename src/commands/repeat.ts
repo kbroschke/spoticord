@@ -26,7 +26,7 @@ module.exports = {
 			function() {
 				const embed = new MessageEmbed({
 					color: "#1DB954",
-					description: "👌",
+					description: ":ok_hand:",
 				});
 				interaction.reply({ embeds: [embed] });
 			},

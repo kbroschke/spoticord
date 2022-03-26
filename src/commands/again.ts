@@ -13,7 +13,7 @@ module.exports = {
 			function() {
 				const embed = new MessageEmbed({
 					color: "#1DB954",
-					description: "⏮️",
+					description: ":track_previous:",
 				});
 				interaction.reply({ embeds: [embed] });
 			},
