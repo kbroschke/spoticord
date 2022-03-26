@@ -1,146 +1,141 @@
-import { Message, MessageEmbed } from "discord.js";
+import { CommandInteraction, GuildMember, MessageEmbed } from "discord.js";
 import SpotifyWebApi from "spotify-web-api-node";
 import { DEVICE_ID } from "../../config/spotify.json";
 import { AudioPlayer, getVoiceConnection, joinVoiceChannel, VoiceConnection } from "@discordjs/voice";
+import type { Command } from "types/command";
+import { SlashCommandBuilder } from "@discordjs/builders";
 
 const errorEmbed = new MessageEmbed({
 	color: "#f0463a",
 });
 
-type searchType = Parameters<SpotifyWebApi["search"]>[1][number]
+type SearchType = Parameters<SpotifyWebApi["search"]>[1][number]
+type SearchResultType =
+	SpotifyApi.TrackObjectFull[] |
+	SpotifyApi.ArtistObjectFull[] |
+	SpotifyApi.AlbumObjectSimplified[] |
+	SpotifyApi.PlaylistObjectSimplified[] |
+	SpotifyApi.ShowObjectSimplified[] |
+	SpotifyApi.EpisodeObjectSimplified[];
+// globals
+
 
 module.exports = {
-	name: "play",
-	description: "Start playback of given track/playlist/album/artist. If no argument is given, current Spotify player gets just unpaused.",
-	execute(message: Message, args: string[], spotifyAPI: SpotifyWebApi,
+	data: new SlashCommandBuilder()
+		.setName("play")
+		.setDescription("Start playback of given link or name or unpause current spotify playback.")
+		.addStringOption((option) => {
+			return option
+				.setName("type")
+				.setDescription("Select which type of content to search for, omit to search everything.")
+				.setRequired(false)
+				.addChoice("track", "track")
+				.addChoice("playlist", "playlist")
+				.addChoice("album", "album")
+				.addChoice("artist", "artist")
+				.addChoice("show", "show")
+				.addChoice("episode", "episode");
+		})
+		.addStringOption((option) => {
+			return option
+				.setName("query")
+				.setDescription("Spotify URL/URI or name of what to search for.")
+				.setRequired(false);
+		}),
+	execute(interaction: CommandInteraction, spotifyAPI: SpotifyWebApi,
 		player: AudioPlayer) {
-		if (!message.member) {return;}
-		if (!message.member.voice.channel) {
-			message.reply("please join a voice channel first!");
+		const member = interaction.member as GuildMember | null;
+		if (!member) {return;}
+		if (!member.voice.channel) {
+			interaction.reply({
+				embeds: [errorEmbed.setDescription("Please join a voice channel first!")],
+				ephemeral: true,
+			});
 			return;
 		}
 
-		spotifyAPI = spotifyAPI;
+		const searchType = interaction.options.getString("type", false) as SearchType | null;
+		const seachQuery = interaction.options.getString("query", false);
 
-		spotifyAPI.getMyCurrentPlaybackState().then(
-			function(data) {
-				if (args.length === 0) {
-					if (JSON.stringify(data.body) === "{}") {
-						message.channel.send({ embeds: [
+		if (searchType && !seachQuery) {
+			interaction.reply({
+				embeds: [errorEmbed.setDescription("If you select a type, please also provide a search query!")],
+				ephemeral: true,
+			});
+			return;
+		}
+
+		if (!seachQuery) {
+			// there is no search query so try to unpause or transfer playback
+			spotifyAPI.getMyCurrentPlaybackState().then(
+				function(data) {
+					if (data.statusCode === 204) {
+						interaction.reply({ embeds: [
+							// TODO better message (help command may get deleted)
 							errorEmbed.setDescription("Nothing's currently playing. To see all commands use `help`."),
 						] });
 						// TODO catch nothings playing -> is this a good solution?
 					}
 					else if (data.body.device.id === DEVICE_ID) {
-						initializePlayback(message, null, false, spotifyAPI,
+						initializePlayback(interaction, null, false, spotifyAPI,
 							player);
 					}
 					else {
-						initializePlayback(message, null, true, spotifyAPI,
+						initializePlayback(interaction, null, true, spotifyAPI,
 							player);
 					}
+				},
+				function(error) {
+					console.error("ERROR: getMyCurrentPlaybackState", error);
+					interaction.reply({
+						// TODO
+						embeds: [errorEmbed.setDescription("There was an error while fetching")],
+						ephemeral: true,
+					});
+				},
+			);
+		}
+		else {
+			// there es a search query or a link
+			if (searchType) {
+				searchSpotify(seachQuery, [searchType], interaction,
+					spotifyAPI);
+			}
+			else {
+				if (isSpotifyLink(seachQuery)) {
+					initializePlayback(interaction, seachQuery, false,
+						spotifyAPI, player);
 				}
 				else {
-					switch (args[0]) {
-					case "1":
-					case "2":
-					case "3":
-					case "4":
-					case "5":
-						// TODO play results[args[0]];
-						// use TextChannel.awaitMessages();
-						message.channel.send({ embeds: [
-							errorEmbed.setDescription("This feature is WIP"),
-						] });
-						break;
-					case "track":
-					case "album":
-					case "playlist":
-					case "artist":
-					case "show":
-					case "episode":
-						if (args.length < 2) {
-							message.channel.send({ embeds: [
-								errorEmbed.setDescription(
-									"You need to provide the name of the "+
-									`${args[0]}!`),
-							] });
-						}
-						else {
-							// remove 1st element so rest can be joined as search query
-							const searchType = args.shift() as searchType;
-							searchSpotify(args.join(" "),
-								[searchType], message, spotifyAPI);
-						}
-						break;
-					default:
-						if (isSpotifyLink(args[0])) {
-							// TODO make spotify URI from URL
-							console.log(data.body);
-							if (JSON.stringify(data.body) == "{}") {
-								initializePlayback(message, args[0], true,
-									spotifyAPI, player);
-							}
-							else if (data.body.device.id ==
-								DEVICE_ID) {
-								initializePlayback(message, args[0], false,
-									spotifyAPI, player);
-							}
-							else {
-								initializePlayback(message, args[0], true,
-									spotifyAPI, player);
-							}
-						}
-						else {
-							searchSpotify(args.join(" "), ["track", "album", "playlist"], message, spotifyAPI);
-						}
-						break;
-					}
+					searchSpotify(seachQuery, ["album", "artist", "playlist", "track", "show", "episode"], interaction, spotifyAPI);
 				}
-			},
-			function(error) {
-				console.error("ERROR: getMyCurrentPlaybackState", error);
-			},
-		);
+			}
+		}
 	},
-};
-
-/**
- * Reply to a message that there were no search results.
- * @param {Message} message - Message to reply to
- */
-function sendSearchUnsuccessful(message: Message) {
-	message.reply("there are no results matching your search request.");
-}
+} as Command;
 
 /**
  * Search Spotify with given query for given type of content
  * @param {string} query - Search for this query
- * @param {searchType} type - Search only this type of content
- * @param {Message} message - Message to reply to with results
+ * @param {searchType} types - Search only these types of content
+ * @param {CommandInteraction} interaction - Interaction to reply to with results
  * @param {SpotifyWebApi} spotifyAPI - SpotifyAPI instance to execute search
  */
-function searchSpotify(query: string, type: searchType[], message: Message,
-	spotifyAPI: SpotifyWebApi) {
-	spotifyAPI.search(query, type, { limit: 5 }).then(
+function searchSpotify(query: string, types: SearchType[],
+	interaction: CommandInteraction, spotifyAPI: SpotifyWebApi) {
+	spotifyAPI.search(query, types, { limit: 5, market: "DE" }).then(
 		function(data) {
-			let items:
-				SpotifyApi.AlbumObjectSimplified[] |
-				SpotifyApi.ArtistObjectFull[] |
-				SpotifyApi.EpisodeObjectSimplified[] |
-				SpotifyApi.PlaylistObjectSimplified[] |
-				SpotifyApi.ShowObjectSimplified[] |
-				SpotifyApi.TrackObjectFull[] = [];
+			let items: SearchResultType = [];
 
-			if (type.length === 1) {
-				if (data.body.albums) {
-					items = data.body.albums.items;
+			if (types.length === 1) {
+				if (data.body.tracks) {
+					items = data.body.tracks.items;
 				}
 				else if (data.body.artists) {
 					items = data.body.artists.items;
 				}
-				else if (data.body.episodes) {
-					items = data.body.episodes.items;
+				else if (data.body.albums) {
+					items = data.body.albums.items;
 				}
 				else if (data.body.playlists) {
 					items = data.body.playlists.items;
@@ -148,70 +143,77 @@ function searchSpotify(query: string, type: searchType[], message: Message,
 				else if (data.body.shows) {
 					items = data.body.shows.items;
 				}
-				else if (data.body.tracks) {
-					items = data.body.tracks.items;
+				else if (data.body.episodes) {
+					items = data.body.episodes.items;
 				}
-				sendResults(message, items);
+
+				sendResults(interaction, items);
 			}
 			else {
 				// merge all results together
-				const albumItems: SpotifyApi.AlbumObjectSimplified[] =
-					data.body.albums?.items || [];
-				const playlistItems: SpotifyApi.PlaylistObjectSimplified[] =
-					data.body.playlists?.items || [];
-				const trackItems: SpotifyApi.TrackObjectFull[] =
-					data.body.tracks?.items || [];
+				const trackItems = data.body.tracks?.items || [];
+				const artistItems = data.body.artists?.items || [];
+				const albumItems = data.body.albums?.items || [];
+				const playlistItems = data.body.playlists?.items || [];
+				const showItems = data.body.shows?.items || [];
+				const episodeItems = data.body.episodes?.items || [];
 
+				const totalResults = 5;
 				const appendItem = (dataitems: typeof items) => {
-					if (items.length >= 10) { // TODO IS THIS RIGHT??
+					if (items.length <= totalResults) {
 						const item = dataitems.shift();
 						if (item) {
+							// add item to items, can't .push() because of types intersecting to 'never'
 							items[items.length] = item;
 						}
 					}
 				};
 
 				let oldItemLength = 0;
-				while (items.length < 10) {
+				while (items.length < totalResults) {
 					oldItemLength = items.length;
 
 					appendItem(trackItems);
+					appendItem(artistItems);
 					appendItem(albumItems);
 					appendItem(playlistItems);
+					appendItem(showItems);
+					appendItem(episodeItems);
 
 					// break if no new items got added (no more search results)
 					if (oldItemLength === items.length) break;
 				}
 
-				sendResults(message, items);
+				sendResults(interaction, items);
 			}
 		},
 		function(error) {
 			console.error("ERROR: search", error);
-			message.channel.send({ embeds: [
-				errorEmbed.setDescription("Search did not complete successfully."),
-			] });
+			interaction.reply({
+				embeds: [errorEmbed.setDescription("Search did not complete successfully.")],
+				ephemeral: true,
+			});
 		},
 	);
 }
 
 /**
  * Send Spotify search results in a human readable format (list)
- * @param {Message} message - message to reply to with results
- * @param {SpotifyApi.AlbumObjectSimplified[] | SpotifyApi.ArtistObjectFull[] | SpotifyApi.EpisodeObjectSimplified[] | SpotifyApi.PlaylistObjectSimplified[] | SpotifyApi.ShowObjectSimplified[] | SpotifyApi.TrackObjectFull[]} items - array of search results to put in message
+ * @param {CommandInteraction} interaction - interaction to reply to with results
+ * @param {SearchResultType} items - array of search results to put in message
  */
-function sendResults(message: Message, items:
-	SpotifyApi.AlbumObjectSimplified[] |
-	SpotifyApi.ArtistObjectFull[] |
-	SpotifyApi.EpisodeObjectSimplified[] |
-	SpotifyApi.PlaylistObjectSimplified[] |
-	SpotifyApi.ShowObjectSimplified[] |
-	SpotifyApi.TrackObjectFull[]) {
+function sendResults(interaction: CommandInteraction, items: SearchResultType) {
 	if (items.length === 0) {
-		sendSearchUnsuccessful(message);
+		interaction.reply({
+			embeds: [errorEmbed.setDescription("There are no results for your search request.")],
+			ephemeral: true,
+		});
 	}
 	else {
-		// turn spotify search api response into readable list
+		// turn spotify search response into a readable list
+
+		// TODO make action row button for each result
+
 		let answer = "";
 
 		items.forEach((element, index) => {
@@ -275,61 +277,52 @@ function sendResults(message: Message, items:
 			color: "#1DB954",
 			description: answer,
 		});
-		message.channel.send({ embeds: [searchEmbed] });
+		interaction.reply({ embeds: [searchEmbed] });
 	}
 }
 
 /**
  * Make sure bot is in voice channel before starting playback on spotify
- * @param {Message} message - message for context
+ * @param {CommandInteraction} interaction - interaction which sent play command
  * @param {string | null} link - link to play on spotify
  * @param {boolean} transfer - passthrough if playback needs to be transfered
  * @param {SpotifyWebApi} spotifyAPI - passthrough spotify API instance
  * @param {AudioPlayer} player - passthrough audio player
  */
-function initializePlayback(message: Message, link: string | null,
-	transfer: boolean, spotifyAPI: SpotifyWebApi,
+function initializePlayback(interaction: CommandInteraction,
+	link: string | null, transfer: boolean, spotifyAPI: SpotifyWebApi,
 	player: AudioPlayer) {
-	if (!message.guildId || !message.guild) {
+	if (!interaction.guildId || !interaction.guild || !interaction.member) {
 		// DMs are already catched prior
 		return;
 	}
+
 	// check if already in channel
-	const connection = getVoiceConnection(message.guildId);
+	const connection = getVoiceConnection(interaction.guildId);
 	if (connection) {
-		// TODO decide if feature in or out
-		/*
-		if (message.guild.me.voice.channelId ===
-			message.member?.voice.channelId) {
-			playSpotify(message, link, transfer,
-				message.guild.me.voice.connection, true, spotifyAPI, player);
-		}
-		else {
-			message.reply("please join the bot's voice channel first!");
-		}
-		*/
-		playSpotify(message, link, transfer, connection, true, spotifyAPI,
+		playSpotify(interaction, link, transfer, connection, true, spotifyAPI,
 			player);
 	}
 	// if not then join the channel and create connection
 	else {
-		if (!message.member?.voice?.channelId) {
+		const member = interaction.member as GuildMember;
+		if (!member.voice.channelId) {
 			// we already tested earlier that message.member has a voiceChannel
 			return;
 		}
 		const connection = joinVoiceChannel({
-			channelId: message.member.voice.channelId,
-			guildId: message.guildId,
-			adapterCreator: message.guild.voiceAdapterCreator,
+			channelId: member.voice.channelId,
+			guildId: interaction.guildId,
+			adapterCreator: interaction.guild.voiceAdapterCreator,
 		});
-		playSpotify(message, link, transfer, connection, false, spotifyAPI,
+		playSpotify(interaction, link, transfer, connection, false, spotifyAPI,
 			player);
 	}
 }
 
 /**
  * Start playback in Spotify
- * @param {Message} message - message for context
+ * @param {CommandInteraction} interaction - interaction which sent play command
  * @param {string | null} link - link of song/episode/... to play in Spotify
  * @param {boolean} transfer - must playback transfered to Librespot device before starting playback
  * @param {VoiceConnection} connection - voiceConnection of bot to play audio to Discord
@@ -337,10 +330,14 @@ function initializePlayback(message: Message, link: string | null,
  * @param {SpotifyWebApi} spotifyAPI - Spotify API instance
  * @param {AudioPlayer} player - passthrough audio player
  */
-function playSpotify(message: Message, link: string | null, transfer: boolean,
-	connection: VoiceConnection, alreadyConnected: boolean,
+function playSpotify(interaction: CommandInteraction, link: string | null,
+	transfer: boolean, connection: VoiceConnection, alreadyConnected: boolean,
 	spotifyAPI: SpotifyWebApi, player: AudioPlayer) {
-	const playbackErrorEmbed = errorEmbed.setDescription("Playback could not be started.");
+	const playEmbed = new MessageEmbed({
+		color: "#1DB954",
+		description: "⏮️",
+	});
+	const playbackErrorEmbed = errorEmbed.setDescription("Spotify playback could not be started.");
 
 	// start playing specified URL on librespot device
 	if (link) {
@@ -351,12 +348,12 @@ function playSpotify(message: Message, link: string | null, transfer: boolean,
 			},
 		).then(
 			function() {
-				play(message, connection, player);
-				message.react("▶️");
+				play(connection, player);
+				interaction.reply({ embeds: [playEmbed] });
 			},
 			function(error) {
 				console.error("ERROR: play (link)", error);
-				message.channel.send({ embeds: [playbackErrorEmbed] });
+				interaction.reply({ embeds: [playbackErrorEmbed] });
 			},
 		);
 	}
@@ -365,12 +362,12 @@ function playSpotify(message: Message, link: string | null, transfer: boolean,
 		spotifyAPI.transferMyPlayback([DEVICE_ID],
 			{ play: true }).then(
 			function() {
-				play(message, connection, player);
-				message.react("▶️");
+				play(connection, player);
+				interaction.reply({ embeds: [playEmbed] });
 			},
 			function(error) {
 				console.error("ERROR: transferMyPlayback", error);
-				message.channel.send({ embeds: [playbackErrorEmbed] });
+				interaction.reply({ embeds: [playbackErrorEmbed] });
 			},
 		);
 	}
@@ -382,13 +379,13 @@ function playSpotify(message: Message, link: string | null, transfer: boolean,
 		).then(
 			function() {
 				if (!alreadyConnected) {
-					play(message, connection, player);
+					play(connection, player);
 				}
-				message.react("▶️");
+				interaction.reply({ embeds: [playEmbed] });
 			},
 			function(error) {
 				console.error("ERROR: play", error);
-				message.channel.send({ embeds: [playbackErrorEmbed] });
+				interaction.reply({ embeds: [playbackErrorEmbed] });
 			},
 		);
 	}
@@ -396,12 +393,12 @@ function playSpotify(message: Message, link: string | null, transfer: boolean,
 
 /**
  * Connect Audio from spotify output to discord connection
- * @param {Message} message - message for context
  * @param {VoiceConnection} connection - voiceConnction to play audio
  * @param {AudioPlayer} player - passthrough audio player
  */
-function play(message: Message, connection: VoiceConnection,
+function play(connection: VoiceConnection,
 	player: AudioPlayer) {
+	// TODO refactor (keep in mind: https://discordjs.guide/voice/voice-connections.html#playing-audio)
 	connection.subscribe(player);
 }
 
@@ -417,3 +414,22 @@ function isSpotifyLink(link: string): boolean {
 	}
 	return false;
 }
+
+
+/*
+TODO search result selection as action row buttons?
+
+switch (args[0]) {
+	case "1":
+	case "2":
+	case "3":
+	case "4":
+	case "5":
+		// TODO play results[args[0]];
+		// use TextChannel.awaitMessages();
+		message.channel.send({ embeds: [
+			errorEmbed.setDescription("This feature is WIP"),
+		] });
+		break;
+}
+*/
