@@ -2,6 +2,7 @@ import { SlashCommandBuilder } from "@discordjs/builders";
 import { CommandInteraction, MessageEmbed } from "discord.js";
 import SpotifyWebApi from "spotify-web-api-node";
 import { DEVICE_ID } from "../../config/spotify.json";
+import emojiCharacters from "../emojiCharacters";
 import type { Command } from "types/command";
 
 module.exports = {
@@ -13,7 +14,7 @@ module.exports = {
 			function() {
 				const embed = new MessageEmbed({
 					color: "#1DB954",
-					description: ":track_previous:",
+					description: emojiCharacters.track_previous,
 				});
 				interaction.reply({ embeds: [embed] });
 			},

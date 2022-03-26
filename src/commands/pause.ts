@@ -2,8 +2,8 @@ import { CommandInteraction, MessageEmbed } from "discord.js";
 import { SlashCommandBuilder } from "@discordjs/builders";
 import SpotifyWebApi from "spotify-web-api-node";
 import { DEVICE_ID } from "../../config/spotify.json";
+import emojiCharacters from "emojiCharacters";
 import type { Command } from "types/command";
-
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -14,7 +14,7 @@ module.exports = {
 			function() {
 				const embed = new MessageEmbed({
 					color: "#1DB954",
-					description: ":pause_button:",
+					description: emojiCharacters.pause,
 				});
 				interaction.reply({ embeds: [embed] });
 			},
