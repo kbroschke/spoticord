@@ -10,6 +10,7 @@ export default {
 	"track_previous": "⏮️",
 	"wave": "👋",
 	"ok_hand": "👌",
+	"warning": "⚠️",
 };
 
 /**
