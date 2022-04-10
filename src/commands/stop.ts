@@ -5,6 +5,7 @@ import SpotifyWebApi from "spotify-web-api-node";
 import { DEVICE_ID } from "../../config/spotify.json";
 import emojiCharacters from "../emojiCharacters";
 import { Command } from "types/command";
+import { errorRed, spotifyGreen } from "colors";
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -20,7 +21,7 @@ module.exports = {
 		getVoiceConnection(interaction.guildId)?.destroy();
 
 		const embed = new MessageEmbed({
-			color: "#1DB954",
+			color: spotifyGreen,
 			description: emojiCharacters.wave,
 		});
 		interaction.reply({ embeds: [embed], ephemeral: true });
@@ -33,7 +34,7 @@ module.exports = {
 			function(error) {
 				console.error("ERROR: pause", error);
 				const embed = new MessageEmbed({
-					color: "#f0463a",
+					color: errorRed,
 					description: "Playback could not be paused.",
 				});
 				interaction.reply({ embeds: [embed] });

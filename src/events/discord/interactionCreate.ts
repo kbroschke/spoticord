@@ -1,4 +1,5 @@
 import { AudioPlayer } from "@discordjs/voice";
+import { errorRed } from "colors";
 import { CommandInteraction, MessageEmbed } from "discord.js";
 import SpotifyWebApi from "spotify-web-api-node";
 import type { CommandClient } from "types/command";
@@ -16,7 +17,7 @@ module.exports = {
 		if (!interaction.guild) {
 			// TODO move this to every specific command to let everything still work what doesnt need a guild to be executed
 			const embed = new MessageEmbed({
-				color: "#f0463a",
+				color: errorRed,
 				description: "This bot only works on servers.",
 			});
 			interaction.reply({ embeds: [embed] });

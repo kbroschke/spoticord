@@ -4,6 +4,7 @@ import SpotifyWebApi from "spotify-web-api-node";
 import { DEVICE_ID } from "../../config/spotify.json";
 import emojiCharacters from "../emojiCharacters";
 import type { Command } from "types/command";
+import { errorRed, spotifyGreen } from "colors";
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -24,7 +25,7 @@ module.exports = {
 		spotifyAPI.setShuffle(shuffleMode, { "device_id": DEVICE_ID }).then(
 			function() {
 				const embed = new MessageEmbed({
-					color: "#1DB954",
+					color: spotifyGreen,
 					description: emojiCharacters.ok_hand,
 				});
 				interaction.reply({ embeds: [embed] });
@@ -32,7 +33,7 @@ module.exports = {
 			function(error) {
 				// TODO catch nothings playing
 				let embed = new MessageEmbed({
-					color: "#f0463a",
+					color: errorRed,
 				});
 				if (error.toString().includes("NO_ACTIVE_DEVICE")) {
 					embed = embed.setDescription("Shuffle mode can only be changed when something is playing.");

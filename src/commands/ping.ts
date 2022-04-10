@@ -1,10 +1,11 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
+import { spotifyGreen } from "colors";
 import { CommandInteraction, Message, MessageEmbed } from "discord.js";
 import type { Command } from "types/command";
 
 const embed = new MessageEmbed({
 	title: "Pong!",
-	color: "#1DB954",
+	color: spotifyGreen,
 });
 
 module.exports = {

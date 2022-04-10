@@ -1,4 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
+import { errorRed, spotifyGreen } from "colors";
 import { CommandInteraction, MessageEmbed } from "discord.js";
 import SpotifyWebApi from "spotify-web-api-node";
 import type { Command } from "types/command";
@@ -63,7 +64,7 @@ module.exports = {
 
 					const embed = new MessageEmbed({
 						title: song,
-						color: "#1DB954",
+						color: spotifyGreen,
 						description:
 							`by ${creatorList}\n` +
 							`from ${contextName}\n\n` +
@@ -110,7 +111,7 @@ function msToMMSS(progressMS: number): string[] {
  */
 function sendNothingsPlaying(interaction: CommandInteraction) {
 	const embed = new MessageEmbed({
-		color: "#f0463a",
+		color: errorRed,
 		description: "Nothing's currently playing.",
 	});
 	interaction.reply({ embeds: [embed] });
