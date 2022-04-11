@@ -10,13 +10,13 @@ export type SearchResult =
 	SpotifyApi.ShowObjectSimplified |
 	SpotifyApi.EpisodeObjectSimplified;
 
-/** Class representing to spotify resource (uri) */
+/** Class representing a spotify resource (uri) */
 export class SpotifyResource {
 	type: SearchType;
 	id: string;
 
 	/**
-	 * Create to resource
+	 * Create a resource
 	 * @param {SearchType} type type of resource
 	 * @param {string} id id of resource
 	 */
