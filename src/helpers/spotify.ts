@@ -144,12 +144,12 @@ export async function searchSpotify(query: string, types: SearchType[],
 /**
  * Starts spotify playback on librespot device.
  * @param {SpotifyResource | null} resource If given a resource, play this resource.
- * @param {boolean} transfer Transfer playback from other device to librespot device if true, just unpause librespot device if false. Ignored if given a resource.
  * @param {SpotifyWebApi} spotifyAPI to execute commands on.
+ * @param {boolean} transfer Transfer playback from other device to librespot device if true, just unpause librespot device if false. Ignored if given a resource.
  * @return {Promise} passthrough spotify api promise
  */
 export function startPlayback(resource: SpotifyResource | null,
-	transfer: boolean, spotifyAPI: SpotifyWebApi) {
+	spotifyAPI: SpotifyWebApi, transfer: boolean) {
 	// start playing specified resource on librespot device
 	if (resource) {
 		let isContext: boolean;
