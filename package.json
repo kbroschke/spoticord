@@ -30,6 +30,7 @@
   },
   "scripts": {
     "test": "scripts/build.sh",
+    "start": "node .",
     "init": "node scripts/init.js",
     "configs": "node scripts/createConfigs.js",
     "postinstall": "scripts/librespot.sh"
