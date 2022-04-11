@@ -70,7 +70,7 @@ export function parseLink(link: string): SpotifyResource | null {
  * @param {string} query - Search for this query
  * @param {searchType} types - Search only these types of content
  * @param {SpotifyWebApi} spotifyAPI - SpotifyAPI instance to execute search
- * @return {Promise<SearchResult[]>} - Promise for search results if search completes successfully
+ * @return {Promise<SearchResult[]>} Promise for search results if search completes successfully
  */
 export async function searchSpotify(query: string, types: SearchType[],
 	spotifyAPI: SpotifyWebApi): Promise<SearchResult[]> {
