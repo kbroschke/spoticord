@@ -68,8 +68,7 @@ const librespot = spawn(
 		"--cache-size-limit", "1G",
 		"--disable-discovery",
 		"--backend", "pipe",
-		"--initial-volume", "75",
-		// '--passthrough', // TODO: raw ogg into ogg/opus for discord? (probably not)
+		"--initial-volume", "80",
 		"--format", "S16",
 		// "-v", // verbose debug logs
 	],
