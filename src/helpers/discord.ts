@@ -1,5 +1,5 @@
 import { joinVoiceChannel, VoiceConnection } from "@discordjs/voice";
-import { spotifyGreen } from "colors";
+import { spotifyGreen } from "../colors";
 import { Guild, GuildMember, InteractionReplyOptions, MessageActionRow, MessageButton, MessageEmbed } from "discord.js";
 import emojiCharacters from "../emojiCharacters";
 import { SearchResult } from "./spotify";
@@ -8,7 +8,7 @@ import { SearchResult } from "./spotify";
  * Generate interaction reply for given search results
  * @param {string} query The search query which gave the results.
  * @param {SearchResult[]} items The search results from spotify.
- * @return {TODO} interaction options?.
+ * @return {InteractionReplyOptions | null} message with search results to reply with.
  */
 export function generateSearchResults(query: string, items: SearchResult[]):
 	InteractionReplyOptions & { fetchReply: true } | null {
@@ -18,7 +18,7 @@ export function generateSearchResults(query: string, items: SearchResult[]):
 	else {
 		// turn spotify search response into a readable list
 		const searchEmbed = new MessageEmbed({
-			// TODO search query in title
+			// TODO search query type in title?
 			title: `Search results for \`${query}\``,
 			color: spotifyGreen,
 		});

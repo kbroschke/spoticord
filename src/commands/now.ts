@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { errorRed, spotifyGreen } from "colors";
+import { errorRed, spotifyGreen } from "../colors";
 import { CommandInteraction, MessageEmbed } from "discord.js";
 import SpotifyWebApi from "spotify-web-api-node";
 import type { Command } from "types/command";
@@ -9,18 +9,21 @@ module.exports = {
 		.setName("now")
 		.setDescription("Show currently playing track."),
 	execute(interaction: CommandInteraction, spotifyAPI: SpotifyWebApi) {
+		// TODO only returns tracks, not episodes, because spotify wants to garantee backwards compatability.
+		// See https://developer.spotify.com/documentation/web-api/reference/#/operations/get-information-about-the-users-current-playback
 		spotifyAPI.getMyCurrentPlayingTrack().then(
 			function(data) {
 				const item = data.body.item;
 				if (item) {
 					const song = item.name;
+					const type = item.type;
 
 					let itemContext:
 						SpotifyApi.AlbumObjectSimplified |
 						SpotifyApi.ShowObjectSimplified;
 					let creatorList: string;
 
-					if (item.type === "track") {
+					if (type === "track") {
 						itemContext = item.album;
 
 						const artists = item.artists;
@@ -63,6 +66,7 @@ module.exports = {
 					}
 
 					const embed = new MessageEmbed({
+						// TODO (see top) title: `${song} \`${type}\``,
 						title: song,
 						color: spotifyGreen,
 						description:

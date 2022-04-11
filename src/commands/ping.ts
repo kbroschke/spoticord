@@ -1,10 +1,11 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { spotifyGreen } from "colors";
+import { spotifyGreen } from "../colors";
 import { CommandInteraction, Message, MessageEmbed } from "discord.js";
 import type { Command } from "types/command";
+import strings from "../strings";
 
 const embed = new MessageEmbed({
-	title: "Pong!",
+	title: strings.embeds.titles.ping,
 	color: spotifyGreen,
 });
 

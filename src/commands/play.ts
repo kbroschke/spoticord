@@ -7,7 +7,7 @@ import { SlashCommandBuilder } from "@discordjs/builders";
 import emojiCharacters from "../emojiCharacters";
 import { parseLink, SearchResult, searchSpotify, SearchType, SpotifyResource, startPlayback } from "../helpers/spotify";
 import { generateSearchResults, joinMember } from "../helpers/discord";
-import { errorRed, spotifyGreen } from "colors";
+import { errorRed, spotifyGreen } from "../colors";
 
 const playEmbed = new MessageEmbed({
 	color: spotifyGreen,

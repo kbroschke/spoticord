@@ -1,5 +1,5 @@
 import { AudioPlayer } from "@discordjs/voice";
-import { errorRed } from "colors";
+import { errorRed } from "../../colors";
 import { CommandInteraction, MessageEmbed } from "discord.js";
 import SpotifyWebApi from "spotify-web-api-node";
 import type { CommandClient } from "types/command";

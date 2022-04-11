@@ -4,7 +4,7 @@ import SpotifyWebApi from "spotify-web-api-node";
 import { DEVICE_ID } from "../../config/spotify.json";
 import emojiCharacters from "../emojiCharacters";
 import type { Command } from "types/command";
-import { errorRed, spotifyGreen } from "colors";
+import { errorRed, spotifyGreen } from "../colors";
 
 module.exports = {
 	data: new SlashCommandBuilder()

@@ -1,5 +1,4 @@
-export = {
-	name: "strings",
+export default {
 	spotify: {
 		configNotFound: "The template was saved to config/spotify.json\n" +
 		"Please fill in your client token and secret, as well as your username and password.\n" +
@@ -16,5 +15,13 @@ export = {
 		configNotFound: "The template was saved to config/discord.json\n" +
 		"Please fill in your bot token. For more details please refer to the README.",
 		configNotFoundRunning: "A required field in Discord config is missing. Please check the installation instructions.",
+	},
+	embeds: {
+		titles: {
+			ping: "Pong!",
+		},
+		descriptions: {
+			text: "text",
+		},
 	},
 };
