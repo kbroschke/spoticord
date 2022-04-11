@@ -32,7 +32,7 @@
     "test": "scripts/build.sh",
     "start": "node .",
     "init": "node scripts/init.js",
-    "configs": "node scripts/config.js",
+    "configs": "node scripts/configs.js",
     "postinstall": "scripts/librespot.sh"
   },
   "author": "kbroschke",
